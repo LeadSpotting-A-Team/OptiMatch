@@ -1,5 +1,5 @@
 sandbox/*
 !sandbox/.gitkeep
-.venv/*
-mtcnn/*
-.vscode/*
+.venv/
+mtcnn/
+.vscode/
