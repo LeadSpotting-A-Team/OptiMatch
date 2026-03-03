@@ -3,3 +3,4 @@ sandbox/*
 .venv/
 mtcnn/
 .vscode/
+backend/__pycache__/

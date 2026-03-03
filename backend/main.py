@@ -1,15 +1,20 @@
+import os
 from mtcnn import MTCNN
-import cv2
+import files_loader
 from faces import *
 
 #main function
 
-
-# 1. טעינת התמונה (מומלץ להשתמש ב-OpenCV)
-img = cv2.cvtColor(cv2.imread("sandbox/image.jpg"), cv2.COLOR_BGR2RGB)
-
-# 2. יצירת האובייקט של המזהה
 detector = MTCNN()
 
-faces = get_faces_from_image(img , detector)
-save_faces_to_file(faces , img , "sandbox/faces/")
+frames = files_loader.load_video_as_rgb("sandbox/video.mp4")
+frame_index = 0
+video_faces_directory = os.path.join("sandbox", f"video_faces_directory")
+os.makedirs(video_faces_directory, exist_ok=True)
+for frame in frames:
+    if frame is None: continue
+    faces = get_faces_coordinates_from_image(frame , detector)
+    frame_faces_directory = os.path.join("sandbox", "video_faces_directory", f"frame_{frame_index}")
+    os.makedirs(frame_faces_directory, exist_ok=True)
+    save_faces_to_file(faces , frame , frame_faces_directory)
+    frame_index += 1
