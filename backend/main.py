@@ -1,20 +1,26 @@
 import os
 from mtcnn import MTCNN
+import url_loader
 import files_loader
 from faces import *
 
 #main function
 
 detector = MTCNN()
+while True:
+    url = input("Enter the URL of the image to download (type 'exit' to exit): ")
+    if(url == "exit"): break
 
-frames = files_loader.load_video_as_rgb("sandbox/video.mp4")
-frame_index = 0
-video_faces_directory = os.path.join("sandbox", f"video_faces_directory")
-os.makedirs(video_faces_directory, exist_ok=True)
-for frame in frames:
-    if frame is None: continue
-    faces = get_faces_coordinates_from_image(frame , detector)
-    frame_faces_directory = os.path.join("sandbox", "video_faces_directory", f"frame_{frame_index}")
-    os.makedirs(frame_faces_directory, exist_ok=True)
-    save_faces_to_file(faces , frame , frame_faces_directory)
-    frame_index += 1
+    try:
+        file = url_loader.download_url_to_file(url, "sandbox")
+        if url_loader.is_an_image_file(file):
+            image = files_loader.load_as_rgb(file)
+            faces = get_faces_coordinates_from_image(image, detector)
+            if len(faces) == 0: print("No faces found in the image")
+            save_faces_to_file(faces, image, "sandbox/faces")
+        else: print("File type is not supported by the system (only images are supported)")
+
+        os.remove(file) #remove the file after the operation is done
+
+    except Exception as e:
+        print(f"Error: {e}")
