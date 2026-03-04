@@ -1,5 +1,4 @@
-
-import deepface
+from mtcnn import MTCNN
 import cv2
 import files_loader
 import metadata as metadata_module
@@ -57,7 +56,7 @@ def is_valie_face(face_object : dict , confidence_threshold : float = 0.9):
         return False
     return True
 
-def get_faces_coordinates_from_image(image , detector):
+def get_faces_coordinates_from_image(image , detector ):
 
     results = detector.detect_faces(image)
     faces = []
@@ -67,7 +66,7 @@ def get_faces_coordinates_from_image(image , detector):
         faces.append(fc)
     return faces
 
-def save_faces_to_file(faces_coordinates : list[Face_Coordinates] , image , path : str , post_metadata : metadata_module.posts_metadata):
+def save_faces_to_file(faces_coordinates : list[Face_Coordinates] , image , path : str , post_metadata : metadata_module.Post_Metadata):
     i = 0
     metadata_module.save_post_metadata(post_metadata)
 

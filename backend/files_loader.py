@@ -1,12 +1,20 @@
 import cv2
 def load_as_rgb(image_path):
     img = cv2.imread(image_path, cv2.IMREAD_COLOR)
+    if(img is None):raise Exception(f"Failed to load image from {image_path}")
+    if(not is_valid_image(img)):raise Exception(f"Image {image_path} is not valid")
     return cv2.cvtColor(img, cv2.COLOR_BGR2RGB) #convert bgr to rgb
 
 def save_as_image(image_rgb, destination_path):
     result = cv2.imwrite(destination_path, cv2.cvtColor(image_rgb, cv2.COLOR_RGB2BGR)) #convert rgb to bgr
     if(result == False):raise Exception(f"Failed to save image to {destination_path}")
     return True
+
+def is_valid_image(image):
+    if image.shape[0] < 64: return False  # height
+    if image.shape[1] < 64: return False  # width
+    return True
+
 
 def load_video_as_rgb(video_path):
     frames = []

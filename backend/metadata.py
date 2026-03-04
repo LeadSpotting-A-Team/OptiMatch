@@ -2,7 +2,7 @@ import sqlite3
 
 METADATA_PATH = 'sandbox/metadata.db' #path to the face metadata database
 
-class posts_metadata:
+class Post_Metadata:
     def __init__(self, post_id , media_url , link_to_post , timestamp , platform):
         self.post_id = post_id
         self.media_url = media_url
@@ -35,6 +35,7 @@ def link_face_to_post(face_id : str, post_id : str):
             face_id      TEXT PRIMARY KEY,
             post_id      TEXT ,
             FOREIGN KEY (post_id) REFERENCES posts_metadata(post_id)
+        )
     ''')
 
     cursor.execute('''
@@ -44,7 +45,7 @@ def link_face_to_post(face_id : str, post_id : str):
     ''', (face_id, post_id))
     connection.commit()
 
-def save_post_metadata(posts_metadata : posts_metadata):
+def save_post_metadata(posts_metadata : Post_Metadata):
     connection = sqlite3.connect(METADATA_PATH)
     cursor = connection.cursor()
 
