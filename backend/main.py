@@ -13,6 +13,10 @@ while True:
 
     try:
         file = url_loader.download_url_to_file(url, "sandbox")
+        if url_loader.is_a_video_file(file):
+            frames = files_loader.load_video_as_rgb(file)
+            for frame in frames:
+                faces = get_faces_coordinates_from_image(frame, detector)
         if url_loader.is_an_image_file(file):
             image = files_loader.load_as_rgb(file)
             faces = get_faces_coordinates_from_image(image, detector)

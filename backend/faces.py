@@ -1,8 +1,8 @@
 
-from mtcnn import MTCNN
+import deepface
 import cv2
 import files_loader
-
+import metadata as metadata_module
 
 #### WE NEED TO MOVE TO [ DeepFace ]                   library for face detection and embedding
 #                                     : more fast but less accurate than InsightFace
@@ -10,6 +10,8 @@ import files_loader
 
 #### OR WE MOVE TO      [ insightface (FaceAnalysis) ] library for face detection and embedding
 #                                     : more accurate but slower than DeepFace
+
+
 
 class Face_Coordinates:
 
@@ -65,12 +67,16 @@ def get_faces_coordinates_from_image(image , detector):
         faces.append(fc)
     return faces
 
-def save_faces_to_file(faces_coordinates : list[Face_Coordinates] , image , path):
+def save_faces_to_file(faces_coordinates : list[Face_Coordinates] , image , path : str , post_metadata : metadata_module.posts_metadata):
     i = 0
+    metadata_module.save_post_metadata(post_metadata)
+
     for face in faces_coordinates:
         face_img = image[face.get_left_upper_y():face.get_right_lower_y(), 
                         face.get_left_upper_x():face.get_right_lower_x()]
         files_loader.save_as_image(face_img , f"{path}/face_{i}.jpg")#save the face image
+        #link the face to the post
+        metadata_module.link_face_to_post(f"{path}/face_{i}.jpg", post_metadata.get_post_id())
         i += 1
 
 
