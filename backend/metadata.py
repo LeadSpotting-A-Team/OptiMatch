@@ -25,6 +25,17 @@ class Post_Metadata:
     def get_link_to_post(self):
         return self.link_to_post
 
+def clear_tables():
+    connection = sqlite3.connect(METADATA_PATH)
+    cursor = connection.cursor()
+    cursor.execute('''
+        DROP TABLE IF EXISTS posts_metadata
+    ''')
+    cursor.execute('''
+        DROP TABLE IF EXISTS face_id_TO_post_id
+    ''')
+    connection.commit()
+
 
 def link_face_to_post(face_id : str, post_id : str):
     connection = sqlite3.connect(METADATA_PATH)
