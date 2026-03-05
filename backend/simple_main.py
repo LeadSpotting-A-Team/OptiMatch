@@ -1,34 +1,44 @@
 import os
 
-from metadata import Post_Metadata
-os.environ["TF_CPP_MIN_LOG_LEVEL"] = '2'  #disable tensorflow logging
-os.environ["TF_ENABLE_ONEDNN_OPTS"] = '0' #disable oneDNN logging
-from tensorflow.python.ops.math_ops import np
-import url_loader
-import files_loader
-from faces import *
-import dataset_reader
+from mtcnn import MTCNN
+os.environ["TF_CPP_MIN_LOG_LEVEL"] = '2'
+os.environ["TF_ENABLE_ONEDNN_OPTS"] = '0'
+
 import logging
-logging.getLogger('tensorflow').setLevel(logging.ERROR)
 import warnings
 warnings.filterwarnings('ignore', category=DeprecationWarning)
+
+import config
+import metadata as metadata_module
+from metadata import Post_Metadata
+from Process import process_post , ProcessException, NotSupportedException
+
+logging.getLogger('tensorflow').setLevel(logging.ERROR)
+
 metadata_module.clear_tables()
-from mtcnn import MTCNN
+
+# DeepFace detector_backend: "opencv", "ssd", "mtcnn", "retinaface", "mediapipe", etc.
 detector = MTCNN()
+while True:
+    #get the face confidence threshold
+    face_confidence_threshold = float(input("Enter the \033[93mface confidence threshold\033[0m: "))
+    config.FACE_CONFIDENCE_THRESHOLD = face_confidence_threshold
 
-url = input("Enter the url of the image: ")
-try:
-    post_metadata = Post_Metadata(url, None, None, None, None)
-    file = url_loader.download_url_to_file(url, "sandbox")
-    if url_loader.is_an_image_file(file):
-        image = files_loader.load_as_rgb(file)
-        faces = get_faces_coordinates_from_image_by_detector(image,detector)
-        if len(faces) == 0: print("No faces found in the image")
-        else: print(f"Found {len(faces)} faces in the image")
-        save_faces_to_file(faces, image, "sandbox/faces", post_metadata)
-    else: print("File type is not supported by the system (only images are supported)")
+    #get the minimum face size
+    min_face_size = int(input("Enter the \033[93mminimum face size\033[0m: "))
+    config.MIN_FACE_SIZE = min_face_size
 
-    os.remove(file) #remove the file after the operation is done
+    #get the URL of the image or video
+    url = input("Enter the \033[93mURL\033[0m of the image or video: ")
+    if url == "exit":
+        break
+    post_metadata = Post_Metadata(post_id="1", media_url=url, link_to_post=None, timestamp=None, platform=None)
 
-except Exception as e:
-    print(f"Error: {e}")
+    try:
+        face_ids = process_post(post_metadata, detector)
+        if len(face_ids) == 0:
+            print("No faces found.")
+        else:
+            print(f"Found {len(face_ids)} face(s).")
+    except ProcessException as e:
+        print(f"\033[91m{e}\033[0m")

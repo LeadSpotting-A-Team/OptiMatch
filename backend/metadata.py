@@ -9,6 +9,21 @@ class Post_Metadata:
         self.link_to_post = link_to_post
         self.timestamp = timestamp
         self.platform = platform
+        self.max_faces_per_frame = 0
+        self.frames_count = 0
+
+    def set_max_faces_per_frame(self, max_faces_per_frame : int):
+        if max_faces_per_frame > self.max_faces_per_frame:
+            self.max_faces_per_frame = max_faces_per_frame
+
+    def add_frame_count(self, frame_count : int = 1):
+        self.frames_count += frame_count
+
+    def get_frames_count(self):
+        return self.frames_count
+    
+    def get_max_faces_per_frame(self):
+        return self.max_faces_per_frame
 
     def get_post_id(self):
         return self.post_id
@@ -67,21 +82,25 @@ def save_post_metadata(posts_metadata : Post_Metadata):
             media_url    TEXT,
             link_to_post TEXT,
             timestamp    TEXT,
-            platform     TEXT
+            platform     TEXT,
+            max_faces_per_frame INTEGER,
+            frames_count INTEGER
         )
     ''')
 
     # insert or replace record
     cursor.execute('''
         INSERT OR REPLACE INTO posts_metadata
-        (post_id, media_url, link_to_post, timestamp, platform)
-        VALUES (?, ?, ?, ?, ?)
+        (post_id, media_url, link_to_post, timestamp, platform, max_faces_per_frame, frames_count)
+        VALUES (?, ?, ?, ?, ?, ?, ?)
     ''', (
         posts_metadata.get_post_id(),
         posts_metadata.get_media_url(),
         posts_metadata.get_link_to_post(),
         posts_metadata.get_timestamp(),
-        posts_metadata.get_platform()
+        posts_metadata.get_platform(),
+        posts_metadata.get_max_faces_per_frame(),
+        posts_metadata.get_frames_count()
     ))
 
     connection.commit()
