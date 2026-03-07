@@ -28,7 +28,7 @@ for post_metadata in posts_metadata:
             image = files_loader.load_as_rgb(file)
             faces = get_faces_coordinates_from_image_by_detector(image, detector)
             if len(faces) == 0: print("No faces found in the image")
-            save_faces_to_file(faces, image, "sandbox/faces", post_metadata)
+            save_face_images(faces, image, "sandbox/faces", post_metadata)
             posts_metadata_count += 1
         else: print("File type is not supported by the system (only images are supported)")
 

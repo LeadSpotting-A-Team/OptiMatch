@@ -40,7 +40,7 @@ class Post_Metadata:
     def get_link_to_post(self):
         return self.link_to_post
 
-def clear_tables():
+def clear_tables() -> None:
     connection = sqlite3.connect(METADATA_PATH)
     cursor = connection.cursor()
     cursor.execute('''

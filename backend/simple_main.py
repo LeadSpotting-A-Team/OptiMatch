@@ -1,5 +1,6 @@
 import os
 
+import deepface
 from mtcnn import MTCNN
 os.environ["TF_CPP_MIN_LOG_LEVEL"] = '2'
 os.environ["TF_ENABLE_ONEDNN_OPTS"] = '0'
@@ -18,8 +19,11 @@ logging.getLogger('tensorflow').setLevel(logging.ERROR)
 metadata_module.clear_tables()
 
 # DeepFace detector_backend: "opencv", "ssd", "mtcnn", "retinaface", "mediapipe", etc.
-detector = MTCNN()
+#detector = MTCNN()
 while True:
+    #get the detector
+    detector = input("Enter the \033[93mdetector\033[0m: ")
+
     #get the face confidence threshold
     face_confidence_threshold = float(input("Enter the \033[93mface confidence threshold\033[0m: "))
     config.FACE_CONFIDENCE_THRESHOLD = face_confidence_threshold
