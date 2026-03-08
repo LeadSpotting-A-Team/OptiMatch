@@ -1,7 +1,11 @@
 import csv
 import metadata as metadata_module
 
-def read_dataset_as_csv(path : str):
+
+#define function to read the dataset as a csv file and return the list of posts metadata
+#path: the path to the csv file
+#return: the list of posts metadata
+def read_dataset_as_csv(path : str , post_id_column_name : str = "post_id", media_url_column_name : str = "mediaurl", link_column_name : str = "link", timestamp_column_name : str = "creation_time", platform_column_name : str = "source"):
 
     posts_metadata = []#list of posts metadata
 
@@ -19,11 +23,12 @@ def read_dataset_as_csv(path : str):
                 row_index += 1
                 continue #skip header row
             row_index += 1
-            post_matadata = metadata_module.Post_Metadata(row[columns_names["post_id"]],
-            row[columns_names["mediaurl"]], 
-            row[columns_names["link"]], 
-            row[columns_names["creation_time"]], 
-            row[columns_names["source"]])
-            posts_metadata.append(post_matadata)
+            post_metadata = metadata_module.Post_Metadata(
+            row[columns_names[post_id_column_name]],
+            row[columns_names[media_url_column_name]], 
+            row[columns_names[link_column_name]], 
+            row[columns_names[timestamp_column_name]], 
+            row[columns_names[platform_column_name]])
+            posts_metadata.append(post_metadata)
 
     return posts_metadata#[post_matadata1 , post_matadata2 , post_matadata3 , ...]

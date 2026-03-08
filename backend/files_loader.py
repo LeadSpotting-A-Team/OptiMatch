@@ -18,18 +18,27 @@ def is_valid_image(image):
 
 def load_video_as_rgb(video_path):
     frames = []
-    cap = cv2.VideoCapture(video_path)
-    if not cap.isOpened():raise Exception(f"Failed to open video {video_path}")
-    while cap.isOpened():
-        ret, frame = cap.read()
-        if not ret:
-            if cap.get(cv2.CAP_PROP_POS_FRAMES) >= cap.get(cv2.CAP_PROP_FRAME_COUNT):
-                #(CAP_PROP_POS_FRAMES) is the current frame number
-                #(CAP_PROP_FRAME_COUNT) is the total number of frames
-                #if the frame is the last frame, break
-                break 
-            frames.append(None) #append None to keep the same length as the frames list
-        else:
-            frames.append(cv2.cvtColor(frame, cv2.COLOR_BGR2RGB))
-        
-    return frames
+    cap = None
+    try:
+        cap = cv2.VideoCapture(video_path)
+        if not cap.isOpened():raise Exception(f"Failed to open video {video_path}")
+        while cap.isOpened():
+            ret, frame = cap.read()
+            if not ret:
+                if cap.get(cv2.CAP_PROP_POS_FRAMES) >= cap.get(cv2.CAP_PROP_FRAME_COUNT):
+                    #(CAP_PROP_POS_FRAMES) is the current frame number
+                    #(CAP_PROP_FRAME_COUNT) is the total number of frames
+                    #if the frame is the last frame, break
+                    break 
+                else:
+                    #skip the broken frame
+                    next_frame = int(cap.get(cv2.CAP_PROP_POS_FRAMES)) + 1
+                    cap.set(cv2.CAP_PROP_POS_FRAMES, next_frame)
+                    frames.append(None) #append None to keep the same length as the frames list
+            else:
+                frames.append(cv2.cvtColor(frame, cv2.COLOR_BGR2RGB))
+            
+        return frames
+    finally:
+        if cap is not None:
+            cap.release()
