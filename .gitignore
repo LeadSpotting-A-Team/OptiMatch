@@ -9,3 +9,6 @@ mtcnn/
 .vscode/
 #ignore all pycache files in the project
 **/__pycache__/ 
+#ignore all files in faces folder but keep the gitkeep file (to make the folder visible to git)
+faces/
+downloads/

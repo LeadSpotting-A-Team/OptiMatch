@@ -9,7 +9,7 @@ def read_dataset_as_csv(path : str , post_id_column_name : str = "post_id", medi
 
     posts_metadata = []#list of posts metadata
 
-    with open(path, 'r', encoding='utf-8') as file:
+    with open(path, 'r', encoding='utf-8-sig') as file:
         #read the dataset as a csv file with utf-8 encoding (read mode)
         reader = csv.reader(file)
         row_index = 0
@@ -19,6 +19,7 @@ def read_dataset_as_csv(path : str , post_id_column_name : str = "post_id", medi
                 column_index = 0
                 for column_name in row:
                     columns_names[column_name] = column_index
+                    #print(f"Column name: {column_name} - Column index: {column_index}")
                     column_index += 1
                 row_index += 1
                 continue #skip header row

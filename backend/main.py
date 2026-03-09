@@ -19,7 +19,7 @@ metadata_module.clear_tables()
 #need to check difrent way to generate the face id
 #we can use the face coordinates to generate a unique id
 
-posts_metadata = dataset_reader.read_dataset_as_csv("sandbox/dataset.csv")
+posts_metadata = dataset_reader.read_dataset_as_csv("sandbox/Basic_dataset_sample.csv")
 posts_metadata_count = 0
 face_vector_store = IVF.FaceVectorStore("sandbox/face_vector_store.index")
 for post_metadata in posts_metadata:
@@ -36,3 +36,4 @@ for post_metadata in posts_metadata:
     except Exception as e:
         print(f"Error: {e}")
 print(f"Processed {posts_metadata_count} out of {len(posts_metadata)} posts.")
+print(f"Face vector store has {face_vector_store.get_total_count()} faces.")

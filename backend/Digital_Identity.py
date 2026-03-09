@@ -12,7 +12,7 @@ session = ort.InferenceSession(MODEL_PATH)
 
 #get the embedding of a face image (face_image_rgb)
 #return the embedding as a single dimensional array of size 512
-def get_face_embedding(face_image_rgb : np.ndarray):
+def get_face_embedding(face_image_rgb : np.ndarray) -> np.ndarray:
     # 1.Pre-processing
     face_resized = cv2.resize(face_image_rgb, config.ARCFACE_INPUT_SIZE)
     
