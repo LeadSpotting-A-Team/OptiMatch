@@ -109,9 +109,9 @@ def get_faces_count(cropped_faces : list[np.ndarray | None]) -> int:
             count += len(frame)
     return count
 
-def get_images_from_faces_ids(faces_ids : list[str]) -> list[np.ndarray | None]:
+def get_images_from_face_ids(face_ids : list[str]) -> list[np.ndarray | None]:
     images = []
-    for face_id in faces_ids:
+    for face_id in face_ids:
         path = os.path.join(config.FACES_OUTPUT_PATH, f"{face_id}.jpg")
         image = files_loader.load_as_rgb(path)
         images.append(image)
