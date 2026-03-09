@@ -1,10 +1,10 @@
 import os
 
+import Face_Detection
 import hashlib
 import url_loader
 import config
 import metadata as metadata_module
-import faces as faces_module
 import files_loader
 import numpy as np
 class ProcessException(Exception):
@@ -37,6 +37,7 @@ def Store_Harvested_Post(post_metadata: metadata_module.Post_Metadata):
     faces_ids: list[str] = []
     try:
         frames = Harveste_URL(post_metadata.get_media_url() , False)
+        metadata_module.save_post_metadata(post_metadata)
         frame_index = 0
         for frame in frames:
             face_index = 0
@@ -44,6 +45,7 @@ def Store_Harvested_Post(post_metadata: metadata_module.Post_Metadata):
                 if face_image is not None:
                     face_id = get_Harvested_Face_id(post_metadata.get_media_url(), face_index, frame_index)
                     metadata_module.link_harvested_faces_to_post(face_id, post_metadata.get_post_id())
+                    Face_Detection.save_cropped_faces_to_path([face_image], [face_id], config.FACES_OUTPUT_PATH)
                     faces_ids.append(face_id)
                     face_index += 1
             frame_index += 1
@@ -74,9 +76,9 @@ def Harveste_URL(url: str,index_alignment: bool = True, min_confidence: float = 
 
 #Harveste a frame and return a list of faces images
 def Harveste_Frame(frame: np.ndarray, index_alignment: bool = True, min_confidence: float = config.FACE_CONFIDENCE_THRESHOLD) -> list[np.ndarray | None]:
-    faces_coordinates = faces_module.extract_faces_coordinates_from_image(frame)
-    faces_images = faces_module.extract_faces_from_image(frame, faces_coordinates, index_alignment, min_confidence)
-    return faces_images
+    detected_faces = Face_Detection.detect_faces_in_image(frame)
+    cropped_faces = Face_Detection.crop_faces_from_image(frame, detected_faces, index_alignment, min_confidence)
+    return cropped_faces
 
 #Harveste an image and return a list of faces images
 def Harveste_Image(image_path: str, index_alignment: bool = True, min_confidence: float = config.FACE_CONFIDENCE_THRESHOLD) -> list[np.ndarray | None]:
@@ -98,3 +100,19 @@ def Harveste_Video(video_path: str, index_alignment: bool = True, min_confidence
         faces_images = Harveste_Frame(frame, index_alignment, min_confidence)
         result.append(faces_images)
     return result
+
+
+def get_faces_count(cropped_faces : list[np.ndarray | None]) -> int:
+    count = 0
+    for frame in cropped_faces:
+        if frame is not None:
+            count += len(frame)
+    return count
+
+def get_images_from_faces_ids(faces_ids : list[str]) -> list[np.ndarray | None]:
+    images = []
+    for face_id in faces_ids:
+        path = os.path.join(config.FACES_OUTPUT_PATH, f"{face_id}.jpg")
+        image = files_loader.load_as_rgb(path)
+        images.append(image)
+    return images

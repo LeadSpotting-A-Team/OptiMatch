@@ -49,7 +49,7 @@ def get_embeddings_similarity(embedding1 : np.ndarray, embedding2 : np.ndarray):
     return np.clip(float(sim), 0.0, 1.0)
     #return 0 if the similarity is negative
 
-
+#O(N * 512) where N is the number of embeddings in the database
 def find_matches(query_embedding : np.ndarray , threshold : float , database_matrix : np.ndarray):
 
     #make the query embedding a 1D array

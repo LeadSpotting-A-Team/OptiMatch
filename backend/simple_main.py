@@ -1,7 +1,7 @@
 import os
-
-import deepface
-from mtcnn import MTCNN
+import Face_Harvester
+import Digital_Identity
+import Face_Detection
 os.environ["TF_CPP_MIN_LOG_LEVEL"] = '2'
 os.environ["TF_ENABLE_ONEDNN_OPTS"] = '0'
 
@@ -12,7 +12,6 @@ warnings.filterwarnings('ignore', category=DeprecationWarning)
 import config
 import metadata as metadata_module
 from metadata import Post_Metadata
-from Process import process_post , ProcessException, NotSupportedException
 
 logging.getLogger('tensorflow').setLevel(logging.ERROR)
 
@@ -39,10 +38,28 @@ while True:
     post_metadata = Post_Metadata(post_id="1", media_url=url, link_to_post=None, timestamp=None, platform=None)
 
     try:
-        face_ids = process_post(post_metadata, detector)
-        if len(face_ids) == 0:
-            print("No faces found.")
-        else:
-            print(f"Found {len(face_ids)} face(s).")
-    except ProcessException as e:
-        print(f"\033[91m{e}\033[0m")
+        #crop the faces from the URL [cropped_faces : list[np.ndarray | None]]
+        post_metadata = Post_Metadata(post_id="1", media_url=url, link_to_post=None, timestamp=None, platform=None)
+        face_ids = Face_Harvester.Store_Harvested_Post(post_metadata)
+
+        images = Face_Harvester.get_images_from_faces_ids(face_ids)
+
+        embeddings = []
+        for image in images:
+            embedding = Digital_Identity.get_face_embedding(image)
+            embeddings.append(embedding)
+
+        for index1 in range(len(embeddings)):
+            for index2 in range(len(embeddings)):
+                embedding1 = embeddings[index1]
+                embedding2 = embeddings[index2]
+                print(f"similarity [{index1}][{index2}]: {Digital_Identity.get_embeddings_similarity(embedding1, embedding2)}")
+
+        #crop_face = face_ids[0]
+
+        #embedding = Digital_Identity.get_face_embedding(crop_face)
+
+        #print(f"similarity: {Digital_Identity.get_embeddings_similarity(embedding, Digital_Identity.get_face_embedding(crop_face))}")
+
+    except Face_Harvester.ProcessException as e:
+        print(e.colored_str())

@@ -23,10 +23,14 @@ class Detected_Face:
     @staticmethod
     #form the face coordinates from the face detection result
     def from_detection_result(face_object : dict) -> 'Detected_Face':
+        
+        #MTCNN detection result
         if 'box' in face_object:
             return Detected_Face(face_object['box'][0], face_object['box'][1], face_object['box'][2], face_object['box'][3], face_object['confidence'])
+        #DeepFace detection result
         elif 'facial_area' in face_object:
             return Detected_Face(face_object['facial_area']['x'], face_object['facial_area']['y'], face_object['facial_area']['w'], face_object['facial_area']['h'], face_object['confidence'])
+        #(SUPPORTED DETECTORS: MTCNN, DeepFace)
         else:
             raise ValueError("Not a valid face detection result")
 
@@ -46,11 +50,11 @@ class Detected_Face:
         return self.confidence
 
 #check if the face is looking forward
-def is_face_look_forward(face_object : dict) -> bool:
+def is_face_looking_forward(face_object : dict) -> bool:
     return True #TODO: implement the function
 
 #check if the face is valid
-def is_valid_face(face_object : dict , confidence_threshold : float = config.FACE_CONFIDENCE_THRESHOLD):
+def is_big_enough_AND_looking_forward(face_object : dict):
 
 
     #'facial_area' -> {'x': x, 'y': y, 'w': width, 'h': height}
@@ -60,7 +64,7 @@ def is_valid_face(face_object : dict , confidence_threshold : float = config.FAC
     if 'box' in face_object and (face_object['box'][2] < config.MIN_FACE_SIZE or face_object['box'][3] < config.MIN_FACE_SIZE):
         return False
 
-    if not is_face_look_forward(face_object):
+    if not is_face_looking_forward(face_object):
         return False
     return True
 
@@ -69,20 +73,20 @@ def is_valid_face(face_object : dict , confidence_threshold : float = config.FAC
 
 
 #define function to extract faces_coordinates from an image by the detector [mtcnn or deepface]
-def extract_faces_coordinates_from_image(image) -> list[Detected_Face]:
+def detect_faces_in_image(image , detector : mtcnn.MTCNN | str = config.DETECTOR) -> list[Detected_Face]:
     faces = []
     detected_faces = []
     try:
-        if isinstance(config.DETECTOR, mtcnn.MTCNN):
-            detected_faces = config.DETECTOR.detect_faces(image)
+        if isinstance(detector, mtcnn.MTCNN):
+            detected_faces = detector.detect_faces(image)
 
-        elif isinstance(config.DETECTOR, str):
-            detected_faces = DeepFace.extract_faces(img_path=image, detector_backend=config.DETECTOR, enforce_detection=False)
+        elif isinstance(detector, str):
+            detected_faces = DeepFace.extract_faces(img_path=image, detector_backend=detector, enforce_detection=False)
         else:
             raise TypeError("Detector is not a MTCNN or a string (detector_backend)")
         
         for face in detected_faces:
-                if not is_valid_face(face): continue
+                if not is_big_enough_AND_looking_forward(face): continue
                 faces.append(Detected_Face.from_detection_result(face))
         return faces
     except ValueError as e:
@@ -91,33 +95,34 @@ def extract_faces_coordinates_from_image(image) -> list[Detected_Face]:
 
 #define function to extract faces from an image by face coordinates
 #return the list of face images [None if the confidence is less than the minimum confidence]
-def extract_faces_from_image(image : np.ndarray , faces_coordinates : list[Detected_Face] , index_alignment : bool = True , min_confidence : float = 0) -> list[np.ndarray | None]:
-    if faces_coordinates is None or len(faces_coordinates) == 0:
+def crop_faces_from_image(image : np.ndarray , detected_faces : list[Detected_Face] , index_alignment : bool = True , min_confidence : float = 0) -> list[np.ndarray | None]:
+    if detected_faces is None or len(detected_faces) == 0:
         return []
     
     faces = []
-    for face_coordinate in faces_coordinates:
-        if face_coordinate.get_confidence() < min_confidence:
+    for detected_face in detected_faces:
+        if detected_face.get_confidence() < min_confidence:
             #skip the face if the confidence is less than the minimum confidence
             if not index_alignment:
                 # when not preserving index alignment, skip instead of appending None
                 continue 
             face_img = None
         else:
-            face_img = image[face_coordinate.get_left_upper_y():face_coordinate.get_right_lower_y(), 
-                        face_coordinate.get_left_upper_x():face_coordinate.get_right_lower_x()]
+            face_img = image[detected_face.get_left_upper_y():detected_face.get_right_lower_y(), 
+                        detected_face.get_left_upper_x():detected_face.get_right_lower_x()]
         faces.append(face_img)
     return faces
 
 #define function to save the extracted faces to the custom path
-def save_faces_to_path(faces_images : list[np.ndarray | None], files_names : list[str], path : str):
-    if len(faces_images) != len(files_names):
-        raise ValueError("The number of faces images and files names must be the same")
+def save_cropped_faces_to_path(cropped_faces : list[np.ndarray | None], file_names : list[str], path : str = config.FACES_OUTPUT_PATH):
+    if len(cropped_faces) != len(file_names):
+        raise ValueError("The number of cropped faces and file names must be the same")
     os.makedirs(path, exist_ok=True) #create the path if it does not exist
-    for face_index in range(len(faces_images)):
-        if faces_images[face_index] is None:
+    for face_index in range(len(cropped_faces)):
+        if cropped_faces[face_index] is None:
             continue #skip the face if the image is None [it means the confidence is less than the minimum confidence]
-        file_path = f"{path}/{files_names[face_index]}.jpg"
-        files_loader.save_as_image(faces_images[face_index], file_path)
+        #join the path (as path/file_name.jpg) and save the image
+        file_path = os.path.join(path, f"{file_names[face_index]}.jpg")
+        files_loader.save_as_image(cropped_faces[face_index], file_path)
     return True #return True if the faces are saved successfully
 
