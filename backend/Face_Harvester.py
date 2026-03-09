@@ -34,7 +34,9 @@ def get_Harvested_Face_id(media_url : str , face_index : int , frame_index : int
 
 
 def Store_Harvested_Post(post_metadata: metadata_module.Post_Metadata):
-    faces_ids: list[str] = []
+    post_faces = [] 
+    #list of dictionaries, 
+    #{"face_id": face_id , "face_image" : face_image}
     try:
         frames = Harveste_URL(post_metadata.get_media_url() , False)
         metadata_module.save_post_metadata(post_metadata)
@@ -46,11 +48,10 @@ def Store_Harvested_Post(post_metadata: metadata_module.Post_Metadata):
                     face_id = get_Harvested_Face_id(post_metadata.get_media_url(), face_index, frame_index)
                     metadata_module.link_harvested_faces_to_post(face_id, post_metadata.get_post_id())
                     Face_Detection.save_cropped_faces_to_path([face_image], [face_id], config.FACES_OUTPUT_PATH)
-                    faces_ids.append(face_id)
+                    post_faces.append({"face_id": face_id , "face_image" : face_image})
                     face_index += 1
             frame_index += 1
-        metadata_module.save_post_metadata(post_metadata)
-        return faces_ids
+        return post_faces
 
     except ProcessException as e:
         raise e

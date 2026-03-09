@@ -79,8 +79,8 @@ class FaceVectorStore:
         self._index: faiss.Index = _load_or_create_index(str(self._path))
 
     # What  : Convenience property that drills through the IndexIDMap wrapper
-    #         to reach the underlying IndexIVFFlat.  Needed to set nprobe and
-    #         to iterate the inverted lists during extraction.
+    #         to reach the underlying IndexIVFFlat.  
+    # Needed to set nprobe and iterate the inverted lists during extraction.
     # Gets  : nothing
     # Returns: faiss.IndexIVFFlat
     @property
@@ -159,12 +159,7 @@ class FaceVectorStore:
     # Returns: list of dicts sorted by score descending, e.g.
     #          [{"id": 42, "score": 0.97}, {"id": 7, "score": 0.91}, ...]
     #          An empty list is returned when the index contains no vectors.
-    def search_face(
-        self, 
-        query_embedding: np.ndarray,
-        k: int = 5,
-        nprobe: int = 20,
-    ) -> List[dict]:
+    def search_face(self, query_embedding: np.ndarray,k: int = 5,nprobe: int = 20) -> List[dict]:
         vec = np.asarray(query_embedding, dtype=np.float32).flatten().reshape(1, -1)
 
         if vec.shape[1] != DIM:
