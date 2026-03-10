@@ -2,7 +2,7 @@
 import sqlite3
 from dataclasses import dataclass, asdict
 import config
-
+import Cropped_Face
 #table name for the harvested faces to post id relationship
 HARVESTED_FACES_TABLE_NAME = 'harvested_faces_TO_post_id' 
 #table name for the posts metadata
@@ -47,41 +47,47 @@ def clear_tables() -> None:
     finally:
         if connection: connection.close()
 
-def link_harvested_faces_to_post(harvested_faces_id : str, post_id : str):
+def link_harvested_faces_to_post(harvested_faces_id: str, post_id: str, cropped_face: Cropped_Face.CroppedFace):
+    landmarks = cropped_face.get_landmarks()
+    le = landmarks.get('left_eye', (None, None))
+    re = landmarks.get('right_eye', (None, None))
+    no = landmarks.get('nose', (None, None))
+    ml = landmarks.get('mouth_left', (None, None))
+    mr = landmarks.get('mouth_right', (None, None))
     connection = None
     try:
         connection = sqlite3.connect(config.METADATA_PATH)
         cursor = connection.cursor()
-        # create table if not exists
         cursor.execute(
-        f'''
-        CREATE TABLE IF NOT EXISTS {HARVESTED_FACES_TABLE_NAME} 
-        (
-            harvested_faces_id TEXT PRIMARY KEY,
-            post_id TEXT,
-            FOREIGN KEY (post_id) REFERENCES {POSTS_METADATA_TABLE_NAME}(post_id)
+            f'''
+            CREATE TABLE IF NOT EXISTS {HARVESTED_FACES_TABLE_NAME} 
+            (
+                harvested_faces_id TEXT PRIMARY KEY,
+                post_id TEXT,
+                left_eye_x REAL, left_eye_y REAL,
+                right_eye_x REAL, right_eye_y REAL,
+                nose_x REAL, nose_y REAL,
+                mouth_left_x REAL, mouth_left_y REAL,
+                mouth_right_x REAL, mouth_right_y REAL,
+                FOREIGN KEY (post_id) REFERENCES {POSTS_METADATA_TABLE_NAME}(post_id)
+            )
+            '''
         )
-        '''
-        )
-
-        # indexing the post_id column for faster retrieval (ADDING MORE SPACE TO THE DATABASE)
         cursor.execute(f'CREATE INDEX IF NOT EXISTS idx_post_id ON {HARVESTED_FACES_TABLE_NAME} (post_id)')
-
-        # insert or replace record
         cursor.execute(
-        f'''
-        INSERT OR REPLACE INTO {HARVESTED_FACES_TABLE_NAME}
-        (harvested_faces_id, post_id)
-        VALUES (?, ?)
-        ''', 
-        (
-        harvested_faces_id,
-        post_id
-        )
+            f'''
+            INSERT OR REPLACE INTO {HARVESTED_FACES_TABLE_NAME}
+            (harvested_faces_id, post_id, left_eye_x, left_eye_y, right_eye_x, right_eye_y, 
+             nose_x, nose_y, mouth_left_x, mouth_left_y, mouth_right_x, mouth_right_y)
+            VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+            ''',
+            (harvested_faces_id, post_id,
+             le[0], le[1], re[0], re[1], no[0], no[1], ml[0], ml[1], mr[0], mr[1])
         )
         connection.commit()
     finally:
-        if connection: connection.close()
+        if connection:
+            connection.close()
 
 def save_post_metadata(posts_metadata : Post_Metadata):
     connection = None

@@ -9,30 +9,52 @@ import numpy as np
 #class to store the face coordinates
 #detector is a global variable that is used to detect the faces
 #detector is a MTCNN object or a string (detector_backend)
-
+class FaceDetectionException(Exception):
+    def __init__(self, message):
+        self.message = message
+        super().__init__(self.message)
 
 class Detected_Face:
 
-    def __init__(self, x,y,width,height,confidence):
+    def __init__(self, x,y,width,height,confidence,keypoints):
         self.face_x = x
         self.face_y = y
         self.face_width = width
         self.face_height = height
         self.confidence = confidence
-    
+        self.keypoints = keypoints
     @staticmethod
     #form the face coordinates from the face detection result
     def from_detection_result(face_object : dict) -> 'Detected_Face':
-        
-        #MTCNN detection result
-        if 'box' in face_object:
-            return Detected_Face(face_object['box'][0], face_object['box'][1], face_object['box'][2], face_object['box'][3], face_object['confidence'])
-        #DeepFace detection result
-        elif 'facial_area' in face_object:
-            return Detected_Face(face_object['facial_area']['x'], face_object['facial_area']['y'], face_object['facial_area']['w'], face_object['facial_area']['h'], face_object['confidence'])
-        #(SUPPORTED DETECTORS: MTCNN, DeepFace)
-        else:
-            raise ValueError("Not a valid face detection result")
+        try:    
+            #MTCNN detection result
+            if 'box' in face_object:
+                keypoints = {
+                            "nose": [face_object['keypoints']['nose'][0], face_object['keypoints']['nose'][1]],
+                            "mouth_right": [face_object['keypoints']['mouth_right'][0], face_object['keypoints']['mouth_right'][1]],
+                            "right_eye": [face_object['keypoints']['right_eye'][0], face_object['keypoints']['right_eye'][1]],
+                            "left_eye": [face_object['keypoints']['left_eye'][0], face_object['keypoints']['left_eye'][1]],
+                            "mouth_left": [face_object['keypoints']['mouth_left'][0], face_object['keypoints']['mouth_left'][1]]
+                }
+                return Detected_Face(face_object['box'][0], face_object['box'][1], face_object['box'][2], face_object['box'][3], face_object['confidence'], keypoints)
+            #DeepFace detection result
+            elif 'facial_area' in face_object:
+                area = face_object['facial_area']
+                #all the keypoints are inside the area
+                keypoints = {
+                    "nose": [area['nose'][0], area['nose'][1]],
+                    "mouth_right": [area['mouth_right'][0], area['mouth_right'][1]],
+                    "right_eye": [area['right_eye'][0], area['right_eye'][1]],
+                    "left_eye": [area['left_eye'][0], area['left_eye'][1]],
+                    "mouth_left": [area['mouth_left'][0], area['mouth_left'][1]]
+                }
+                #return the detected face
+                return Detected_Face(area['x'], area['y'], area['w'], area['h'], face_object['confidence'], keypoints)
+            #unsupported detector
+            else:
+                raise ValueError("Not a valid face detection result")
+        except KeyError as e:
+            raise FaceDetectionException(f"KeyError: {e} , please check the face detection result")
 
     #get the left upper x coordinate of the face
     def get_left_upper_x(self):
@@ -54,18 +76,15 @@ def is_face_looking_forward(face_object : dict) -> bool:
     return True #TODO: implement the function
 
 #check if the face is valid
-def is_big_enough_AND_looking_forward(face_object : dict):
-
-
-    #'facial_area' -> {'x': x, 'y': y, 'w': width, 'h': height}
-    if 'facial_area' in face_object and (face_object['facial_area']['w'] < config.MIN_FACE_SIZE or face_object['facial_area']['h'] < config.MIN_FACE_SIZE):
-        return False
-    #'box' -> [x, y, width, height]
-    if 'box' in face_object and (face_object['box'][2] < config.MIN_FACE_SIZE or face_object['box'][3] < config.MIN_FACE_SIZE):
+def is_big_enough_AND_looking_forward(face: Detected_Face):
+    #check if the face is big enough
+    if face.face_width < config.MIN_FACE_SIZE or face.face_height < config.MIN_FACE_SIZE:
         return False
 
-    if not is_face_looking_forward(face_object):
+    #check if the face is looking forward
+    if not is_face_looking_forward(face):
         return False
+        
     return True
 
 
@@ -75,54 +94,37 @@ def is_big_enough_AND_looking_forward(face_object : dict):
 #define function to extract faces_coordinates from an image by the detector [mtcnn or deepface]
 def detect_faces_in_image(image , detector : mtcnn.MTCNN | str = config.DETECTOR) -> list[Detected_Face]:
     faces = []
-    detected_faces = []
-    try:
-        if isinstance(detector, mtcnn.MTCNN):
-            detected_faces = detector.detect_faces(image)
-
-        elif isinstance(detector, str):
-            detected_faces = DeepFace.extract_faces(img_path=image, detector_backend=detector, enforce_detection=False)
-        else:
-            raise TypeError("Detector is not a MTCNN or a string (detector_backend)")
-        
-        for face in detected_faces:
-                if not is_big_enough_AND_looking_forward(face): continue
-                faces.append(Detected_Face.from_detection_result(face))
-        return faces
-    except ValueError as e:
-        #return empty list if the detection failed!
-        return []
-
-#define function to extract faces from an image by face coordinates
-#return the list of face images [None if the confidence is less than the minimum confidence]
-def crop_faces_from_image(image : np.ndarray , detected_faces : list[Detected_Face] , index_alignment : bool = True , min_confidence : float = 0) -> list[np.ndarray | None]:
-    if detected_faces is None or len(detected_faces) == 0:
-        return []
+    raw_detections = []
     
-    faces = []
-    for detected_face in detected_faces:
-        if detected_face.get_confidence() < min_confidence:
-            #skip the face if the confidence is less than the minimum confidence
-            if not index_alignment:
-                # when not preserving index alignment, skip instead of appending None
-                continue 
-            face_img = None
+    try:
+        # 1. Execute detection based on the detector type
+        if isinstance(detector, mtcnn.MTCNN):
+            raw_detections = detector.detect_faces(image)
+        elif isinstance(detector, str):
+            # DeepFace.extract_faces returns a list of dicts: [{'face':..., 'facial_area':..., 'confidence':...}]
+            raw_detections = DeepFace.extract_faces(img_path=image, detector_backend=detector, enforce_detection=True)
         else:
-            face_img = image[detected_face.get_left_upper_y():detected_face.get_right_lower_y(), 
-                        detected_face.get_left_upper_x():detected_face.get_right_lower_x()]
-        faces.append(face_img)
-    return faces
+            raise TypeError("Detector must be an MTCNN instance or a string (e.g., 'retinaface')")
+        # 2. Process and normalize each detected face
+        for face_data in raw_detections:
+            try:
+                # Normalize the raw dictionary into our unified Detected_Face object
+                new_face = Detected_Face.from_detection_result(face_data)
+                
+                
+                # Now we pass the CLEAN object to our validation function
+                if not is_big_enough_AND_looking_forward(new_face):
+                    continue 
 
-#define function to save the extracted faces to the custom path
-def save_cropped_faces_to_path(cropped_faces : list[np.ndarray | None], file_names : list[str], path : str = config.FACES_OUTPUT_PATH):
-    if len(cropped_faces) != len(file_names):
-        raise ValueError("The number of cropped faces and file names must be the same")
-    os.makedirs(path, exist_ok=True) #create the path if it does not exist
-    for face_index in range(len(cropped_faces)):
-        if cropped_faces[face_index] is None:
-            continue #skip the face if the image is None [it means the confidence is less than the minimum confidence]
-        #join the path (as path/file_name.jpg) and save the image
-        file_path = os.path.join(path, f"{file_names[face_index]}.jpg")
-        files_loader.save_as_image(cropped_faces[face_index], file_path)
-    return True #return True if the faces are saved successfully
+                faces.append(new_face)
+                
+            except FaceDetectionException:
+                # Skip faces that are missing critical landmarks (nose/eyes)
+                continue
+
+        return faces
+
+    except (ValueError):
+        #return an empty list on critical failure
+        return []
 

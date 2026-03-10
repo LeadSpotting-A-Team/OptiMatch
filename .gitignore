@@ -11,4 +11,10 @@ mtcnn/
 **/__pycache__/ 
 #ignore all files in faces folder but keep the gitkeep file (to make the folder visible to git)
 faces/
-downloads/
+download/
+
+#ignore all files in embeddings_models/models folder
+backend/embeddings_models/models/
+
+#ignore metadata.db file
+metadata.db

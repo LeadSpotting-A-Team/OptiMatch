@@ -23,6 +23,9 @@ MAP_PATH   = "face_vault.map.json"
 
 # ── Module-level helpers (private) ────────────────────────────────────────────
 
+
+
+
 # What  : Creates a brand-new IndexIVFFlat wrapped in an IndexIDMap.
 #         Performs a dummy training pass with random unit-normalized vectors
 #         so that FAISS initializes its cluster centroids before any real data

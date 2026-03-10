@@ -1,4 +1,5 @@
 import cv2
+import config
 def load_as_rgb(image_path):
     img = cv2.imread(image_path, cv2.IMREAD_COLOR)
     if(img is None): 
@@ -8,12 +9,12 @@ def load_as_rgb(image_path):
 
 def save_as_image(image_rgb, destination_path):
     result = cv2.imwrite(destination_path, cv2.cvtColor(image_rgb, cv2.COLOR_RGB2BGR)) #convert rgb to bgr
-    if(result == False):raise Exception(f"Failed to save image to {destination_path}")
+    if(result == False):return False #return False if the image is not saved
     return True
 
 def is_valid_image(image):
-    if image.shape[0] < 64: return False  # height
-    if image.shape[1] < 64: return False  # width
+    if image.shape[0] < config.MIN_FACE_SIZE: return False  # height
+    if image.shape[1] < config.MIN_FACE_SIZE: return False  # width
     return True
 
 

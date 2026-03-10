@@ -7,6 +7,7 @@ import config
 import metadata as metadata_module
 import files_loader
 import numpy as np
+import Cropped_Face
 class ProcessException(Exception):
     def __init__(self, cause: Exception | str = ""):
         self.cause = cause
@@ -34,22 +35,22 @@ def get_Harvested_Face_id(media_url : str , face_index : int , frame_index : int
 
 
 def Store_Harvested_Post(post_metadata: metadata_module.Post_Metadata):
-    post_faces = [] 
-    #list of dictionaries, 
-    #{"face_id": face_id , "face_image" : face_image}
+    post_faces = []
     try:
-        frames = Harveste_URL(post_metadata.get_media_url() , False)
+        #create the faces output path if it does not exist
+        os.makedirs(config.FACES_OUTPUT_PATH, exist_ok=True)
+        frames = Harveste_URL(post_metadata.get_media_url(), False)
         metadata_module.save_post_metadata(post_metadata)
+        #save the cropped faces to the faces output path
         frame_index = 0
         for frame in frames:
             face_index = 0
-            for face_image in frame:
-                if face_image is not None:
-                    face_id = get_Harvested_Face_id(post_metadata.get_media_url(), face_index, frame_index)
-                    metadata_module.link_harvested_faces_to_post(face_id, post_metadata.get_post_id())
-                    Face_Detection.save_cropped_faces_to_path([face_image], [face_id], config.FACES_OUTPUT_PATH)
-                    post_faces.append({"face_id": face_id , "face_image" : face_image})
-                    face_index += 1
+            for cropped_face in frame:
+                face_id = get_Harvested_Face_id(post_metadata.get_media_url(), face_index, frame_index)
+                files_loader.save_as_image(cropped_face.get_image(), os.path.join(config.FACES_OUTPUT_PATH, f"{face_id}.jpg"))
+                metadata_module.link_harvested_faces_to_post(face_id, post_metadata.get_post_id(), cropped_face)
+                post_faces.append({"face_id": face_id, "face_image": cropped_face})
+                face_index += 1
             frame_index += 1
         return post_faces
 
@@ -59,13 +60,14 @@ def Store_Harvested_Post(post_metadata: metadata_module.Post_Metadata):
         raise ProcessException(e)
 
 #Harveste a URL and return a list of frames with the faces images
-def Harveste_URL(url: str,index_alignment: bool = True, min_confidence: float = config.FACE_CONFIDENCE_THRESHOLD) -> list[list[np.ndarray | None]]:
+def Harveste_URL(url: str, index_alignment: bool = True, min_confidence: float = config.FACE_CONFIDENCE_THRESHOLD) -> list[list[Cropped_Face.CroppedFace]]:
     file = None
     try:
         file = url_loader.download_url_to_file(url, config.DOWNLOAD_PATH)
         if url_loader.is_an_image_file(file):
-            faces_images = Harveste_Image(file, index_alignment, min_confidence)
-            return [faces_images]#return a list of one frame with the faces images
+            cropped_faces = Harveste_Image(file, index_alignment, min_confidence)
+            #return a list of one frame with the cropped faces
+            return [cropped_faces]
         elif url_loader.is_a_video_file(file):
             return Harveste_Video(file, index_alignment, min_confidence)
         else:
@@ -75,42 +77,47 @@ def Harveste_URL(url: str,index_alignment: bool = True, min_confidence: float = 
             os.remove(file)
 
 
-#Harveste a frame and return a list of faces images
-def Harveste_Frame(frame: np.ndarray, index_alignment: bool = True, min_confidence: float = config.FACE_CONFIDENCE_THRESHOLD) -> list[np.ndarray | None]:
+#Harveste a frame and return a list of cropped faces
+def Harveste_Frame(frame: np.ndarray, index_alignment: bool = True, min_confidence: float = config.FACE_CONFIDENCE_THRESHOLD) -> list[Cropped_Face.CroppedFace]:
     detected_faces = Face_Detection.detect_faces_in_image(frame)
-    cropped_faces = Face_Detection.crop_faces_from_image(frame, detected_faces, index_alignment, min_confidence)
+    cropped_faces = []
+    for detected_face in detected_faces:
+        cropped_face = Cropped_Face.extract_rough_crop(frame, detected_face)
+        cropped_faces.append(cropped_face)
     return cropped_faces
 
-#Harveste an image and return a list of faces images
-def Harveste_Image(image_path: str, index_alignment: bool = True, min_confidence: float = config.FACE_CONFIDENCE_THRESHOLD) -> list[np.ndarray | None]:
+#Harveste an image and return a list of cropped faces
+def Harveste_Image(image_path: str, index_alignment: bool = True, min_confidence: float = config.FACE_CONFIDENCE_THRESHOLD) -> list[Cropped_Face.CroppedFace]:
     image = files_loader.load_as_rgb(image_path)
     if not files_loader.is_valid_image(image):
         #return empty list if the image is not valid
         return [] 
     return Harveste_Frame(image, index_alignment, min_confidence)
 
-#Harveste a video and return a list of frames with the faces images
-def Harveste_Video(video_path: str, index_alignment: bool = True, min_confidence: float = config.FACE_CONFIDENCE_THRESHOLD) -> list[list[np.ndarray | None]]:
-    result: list[list[np.ndarray | None]] = [] #list of frames, each frame is a list of faces images inside the frame
+#Harveste a video and return a list of frames with the cropped faces
+def Harveste_Video(video_path: str, index_alignment: bool = True, min_confidence: float = config.FACE_CONFIDENCE_THRESHOLD) -> list[list[Cropped_Face.CroppedFace]]:
+    result: list[list[Cropped_Face.CroppedFace]] = []
     frames = files_loader.load_video_as_rgb(video_path)
     for frame in frames:
         if frame is None or not files_loader.is_valid_image(frame):
-            #append empty list if the frame is None or not valid
             result.append([]) 
             continue
         faces_images = Harveste_Frame(frame, index_alignment, min_confidence)
         result.append(faces_images)
     return result
 
-
-def get_faces_count(cropped_faces : list[np.ndarray | None]) -> int:
+#get the number of cropped faces
+def get_faces_count(cropped_faces : list[list[Cropped_Face.CroppedFace]]) -> int:
     count = 0
     for frame in cropped_faces:
-        if frame is not None:
-            count += len(frame)
+        if frame is None:
+            continue
+        for cropped_face in frame:
+            count += 1
     return count
 
-def get_images_from_face_ids(face_ids : list[str]) -> list[np.ndarray | None]:
+#get the images from the face ids
+def get_images_from_face_ids(face_ids : list[str]) -> list[np.ndarray]:
     images = []
     for face_id in face_ids:
         path = os.path.join(config.FACES_OUTPUT_PATH, f"{face_id}.jpg")
