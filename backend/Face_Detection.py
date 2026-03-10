@@ -1,4 +1,3 @@
-
 import os
 from deepface import DeepFace
 import mtcnn

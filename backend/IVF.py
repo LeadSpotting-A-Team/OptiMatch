@@ -2,7 +2,6 @@ import json
 import os
 from pathlib import Path
 from typing import List, Optional
-
 import faiss
 import numpy as np
 

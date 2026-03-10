@@ -14,7 +14,7 @@ faces/
 download/
 
 #ignore all files in embeddings_models/models folder
-backend/embeddings_models/models/
-
+backend/embeddings_models/models/*
+!backend/embeddings_models/models/.gitkeep
 #ignore metadata.db file
 metadata.db

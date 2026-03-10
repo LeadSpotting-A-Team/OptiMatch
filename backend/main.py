@@ -31,6 +31,7 @@ for post_metadata in posts_metadata:
             if face_emb is None:
                 continue #skip the face if the embedding is None
             face_vector_store.add_face(face_emb, face_id)
+        print(f"Added {len(post_faces)} faces to the vector store")
         posts_metadata_count += 1
     except Face_Harvester.ProcessException as e:
         print(e.colored_str())

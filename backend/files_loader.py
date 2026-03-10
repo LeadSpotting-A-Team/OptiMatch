@@ -9,7 +9,8 @@ def load_as_rgb(image_path):
 
 def save_as_image(image_rgb, destination_path):
     result = cv2.imwrite(destination_path, cv2.cvtColor(image_rgb, cv2.COLOR_RGB2BGR)) #convert rgb to bgr
-    if(result == False):return False #return False if the image is not saved
+    if(result == False):
+        raise Exception(f"Failed to save image to {destination_path}")
     return True
 
 def is_valid_image(image):

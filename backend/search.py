@@ -18,10 +18,13 @@ while True:
     url = input("Enter the URL of the image to search for: ")
     if url == "exit":
         break
+    if not url:
+        print("Please enter a valid URL.")
+        continue
 
     frames = Face_Harvester.Harveste_URL(url)
     
-    min_confidence = input("Enter the minimum confidence: ")
+    min_confidence = float(input("Enter the minimum confidence: "))
     
     frame_count = 0
     face_count = 0

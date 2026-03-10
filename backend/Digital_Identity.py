@@ -2,12 +2,12 @@ import numpy as np
 import config
 from Cropped_Face import CroppedFace
 from embeddings_models.FaceEmbeddingModel import FaceEmbeddingModel
-
+from embeddings_models.ArcFace_Embedding import ArcFaceEmbedding
 
 #define the embedding model
 EMBEDDING_MODEL : FaceEmbeddingModel | None = None
 if config.EMBEDDING_MODEL == 'ArcFace':
-    from embeddings_models.ArcFace_Embedding import ArcFaceEmbedding
+
     EMBEDDING_MODEL = ArcFaceEmbedding()
 else:
     raise ValueError(f"Embedding model {config.EMBEDDING_MODEL} not supported")

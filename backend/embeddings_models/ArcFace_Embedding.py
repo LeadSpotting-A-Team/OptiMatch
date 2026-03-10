@@ -1,10 +1,12 @@
 import cv2
 import numpy as np
 import onnxruntime as ort
-from FaceEmbeddingModel import FaceEmbeddingModel
+from embeddings_models.FaceEmbeddingModel import FaceEmbeddingModel
 from Cropped_Face import CroppedFace
 
-ARCFACE_MODEL_PATH = "models/arcface_w600k_r50.onnx"
+import os
+
+ARCFACE_MODEL_PATH = os.path.join(os.path.dirname(__file__), "models", "arcface_w600k_r50.onnx")
 
 class ArcFaceEmbedding(FaceEmbeddingModel):
     def __init__(self):

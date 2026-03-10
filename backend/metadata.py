@@ -1,6 +1,4 @@
-
 import sqlite3
-from dataclasses import dataclass, asdict
 import config
 import Cropped_Face
 #table name for the harvested faces to post id relationship

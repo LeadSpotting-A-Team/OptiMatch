@@ -1,5 +1,4 @@
 import os
-
 import Face_Detection
 import hashlib
 import url_loader
