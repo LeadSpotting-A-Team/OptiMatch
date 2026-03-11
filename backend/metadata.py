@@ -125,6 +125,36 @@ def save_post_metadata(posts_metadata : Post_Metadata):
         if connection: connection.close()
 
 
+def get_post_by_face_id(face_id: str) -> "Post_Metadata | None":
+    """Fetch full post metadata for a face_id via JOIN. Returns None if not found."""
+    connection = None
+    try:
+        connection = sqlite3.connect(config.METADATA_PATH)
+        cursor = connection.cursor()
+        cursor.execute(
+            f"""
+            SELECT p.post_id, p.media_url, p.link_to_post, p.timestamp, p.platform
+            FROM {HARVESTED_FACES_TABLE_NAME} h
+            JOIN {POSTS_METADATA_TABLE_NAME} p ON h.post_id = p.post_id
+            WHERE h.harvested_faces_id = ?
+            """,
+            (face_id,),
+        )
+        row = cursor.fetchone()
+        if row is None:
+            return None
+        return Post_Metadata(
+            post_id=row[0],
+            media_url=row[1],
+            link_to_post=row[2],
+            timestamp=row[3],
+            platform=row[4],
+        )
+    finally:
+        if connection:
+            connection.close()
+
+
 def add_post_dynamic(post_metadata: Post_Metadata):
     connection = None
 
