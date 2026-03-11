@@ -27,7 +27,7 @@ for post_metadata in posts_metadata:
         for face in post_faces:
             face_id = face["face_id"]
             face_image = face["face_image"]
-            face_emb = Digital_Identity.get_face_embedding(face_image)
+            face_emb = Digital_Identity.get_face_embedding(face_image, face_id)
             if face_emb is None:
                 continue #skip the face if the embedding is None
             face_vector_store.add_face(face_emb, face_id)

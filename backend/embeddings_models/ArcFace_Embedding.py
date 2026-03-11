@@ -46,13 +46,13 @@ class ArcFaceEmbedding(FaceEmbeddingModel):
             return cv2.resize(rough_crop, self.input_size)
 
         # 5. Perform the actual Warp Affine (Alignment)
-        aligned_img = cv2.warpAffine(rough_crop, tform, self.input_size, borderValue=0.0)
+        aligned_img = cv2.warpAffine(rough_crop, tform, self.input_size, borderMode=cv2.BORDER_REPLICATE)
         return aligned_img
 
     def get_embedding(self, aligned_img: np.ndarray) -> np.ndarray:
         # 1. Data normalization: RGB [0,255] -> [-1,1]
         face_data = aligned_img.astype(np.float32)
-        face_data = (face_data - 127.5) / 128.0
+        face_data = (face_data - 127.5) / 127.5
         
         # 2. Transpose from (H, W, C) to (C, H, W) and expand to batch (1, C, H, W)
         face_data = np.transpose(face_data, (2, 0, 1)) 

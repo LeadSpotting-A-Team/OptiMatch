@@ -182,7 +182,9 @@ class FaceVectorStore:
     #         face_id   — unique string identifier for this face
     # Returns: nothing
     def add_face(self, embedding: np.ndarray, face_id: str) -> None:
+        
         vec = np.asarray(embedding, dtype=np.float32).flatten()
+        vec /= (np.linalg.norm(vec) + 1e-9) #L2 normalization
 
         if vec.shape[0] != DIM:
             raise ValueError(f"Embedding must have dimension {DIM}, got {vec.shape[0]}")
@@ -211,6 +213,9 @@ class FaceVectorStore:
         vecs = np.ascontiguousarray(
             np.asarray(embeddings, dtype=np.float32).reshape(-1, DIM)
         )
+        
+        norms = np.linalg.norm(vecs, axis=1, keepdims=True)
+        vecs /= (norms + 1e-9)
 
         if vecs.shape[0] != len(face_ids):
             raise ValueError(
@@ -256,9 +261,7 @@ class FaceVectorStore:
     # Returns: list of dicts sorted by score descending, e.g.
     #          [{"face_id": "abc123", "score": 0.97}, ...]
     #          An empty list is returned when the index contains no vectors.
-    def search_face(
-        self, query_embedding: np.ndarray, k: int = 5, nprobe: int = 20
-    ) -> List[dict]:
+    def search_face(self, query_embedding: np.ndarray, k: int = 5, nprobe: int = 64) -> List[dict]:
         vec = np.asarray(query_embedding, dtype=np.float32).flatten().reshape(1, -1)
 
         if vec.shape[1] != DIM:

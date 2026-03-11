@@ -3,7 +3,8 @@ import config
 from Cropped_Face import CroppedFace
 from embeddings_models.FaceEmbeddingModel import FaceEmbeddingModel
 from embeddings_models.ArcFace_Embedding import ArcFaceEmbedding
-
+import files_loader as file_loader
+import os
 #define the embedding model
 EMBEDDING_MODEL : FaceEmbeddingModel | None = None
 if config.EMBEDDING_MODEL == 'ArcFace':
@@ -14,7 +15,7 @@ else:
 
 #get the embedding of a face image (face_image_rgb)
 #return the embedding as a single dimensional array of size 512
-def get_face_embedding(cropped_face : CroppedFace) -> np.ndarray | None:
+def get_face_embedding(cropped_face : CroppedFace , face_id : str = None) -> np.ndarray | None:
     # 1. Validation
     if cropped_face is None or cropped_face.get_image() is None:
         return None
@@ -22,6 +23,11 @@ def get_face_embedding(cropped_face : CroppedFace) -> np.ndarray | None:
     # 2. Pre-processing (Alignment and Resizing)
     # This uses the specific logic of the loaded model (e.g., ArcFace)
     preprocessed_face = EMBEDDING_MODEL.preprocess(cropped_face)
+    
+    #save the preprocessed face for debugging purposes
+    if face_id is not None:
+        os.makedirs(f"sandbox/preprocessed_faces", exist_ok=True)
+        file_loader.save_as_image(preprocessed_face, f"sandbox/preprocessed_faces/{face_id}.png")
     
     # 3. Inference (Generating the 512-d vector)
     embedding = EMBEDDING_MODEL.get_embedding(preprocessed_face)
