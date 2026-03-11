@@ -31,8 +31,6 @@ export default function QueryFaceUpload({ onSearchFile, onSearchUrl, loading, er
 
   const canSearch = mode === 'file' ? !!pendingFile : urlInput.trim().length > 0
 
-  // For file mode: show base64 from API response, or local object URL
-  // For URL mode: show base64 from API response, or the URL itself directly
   const displayPreview = previewBase64
     ? `data:image/jpeg;base64,${previewBase64}`
     : mode === 'url' && urlInput.trim()
@@ -40,132 +38,169 @@ export default function QueryFaceUpload({ onSearchFile, onSearchUrl, loading, er
       : pendingPreview
 
   return (
-    <div className="space-y-5">
-      {/* Mode tabs */}
-      <div className="flex rounded-xl overflow-hidden border border-slate-700 text-base">
-        <button
-          onClick={() => setMode('file')}
-          className={`flex-1 py-3 font-medium transition-colors ${
-            mode === 'file'
-              ? 'bg-sky-600 text-white'
-              : 'bg-slate-800 text-slate-400 hover:text-slate-200'
-          }`}
-        >
-          Upload File
-        </button>
-        <button
-          onClick={() => setMode('url')}
-          className={`flex-1 py-3 font-medium transition-colors ${
-            mode === 'url'
-              ? 'bg-sky-600 text-white'
-              : 'bg-slate-800 text-slate-400 hover:text-slate-200'
-          }`}
-        >
-          From URL
-        </button>
-      </div>
+    <div className="space-y-4">
+      {/* Panel wrapper */}
+      <div className="rounded-xl border border-cyan-900/50 overflow-hidden"
+        style={{ background: 'linear-gradient(160deg, #060d14 0%, #050505 100%)' }}>
 
-      {/* Input area */}
-      {mode === 'file' ? (
-        <div
-          {...getRootProps()}
-          className={`
-            flex flex-col items-center justify-center rounded-xl border-2 border-dashed cursor-pointer
-            transition-colors min-h-[280px] p-8
-            ${isDragActive ? 'border-sky-500 bg-sky-500/10' : 'border-slate-600 hover:border-sky-500/60 hover:bg-slate-800/60'}
-            ${loading ? 'pointer-events-none opacity-70' : ''}
-          `}
-        >
-          <input {...getInputProps()} />
-          {displayPreview ? (
-            <img
-              src={displayPreview}
-              alt="Query face"
-              className="max-h-64 max-w-full rounded-lg object-contain shadow-lg"
-            />
+        {/* Mode tabs */}
+        <div className="flex border-b border-cyan-900/40">
+          <button
+            onClick={() => setMode('file')}
+            className={`flex-1 py-3 text-xs font-mono font-bold tracking-widest uppercase transition-all
+              ${mode === 'file'
+                ? 'bg-cyan-500/10 text-cyan-400 border-b-2 border-cyan-500'
+                : 'text-slate-600 hover:text-slate-400'}`}
+          >
+            ▲ Upload File
+          </button>
+          <button
+            onClick={() => setMode('url')}
+            className={`flex-1 py-3 text-xs font-mono font-bold tracking-widest uppercase transition-all
+              ${mode === 'url'
+                ? 'bg-cyan-500/10 text-cyan-400 border-b-2 border-cyan-500'
+                : 'text-slate-600 hover:text-slate-400'}`}
+          >
+            ◈ From URL
+          </button>
+        </div>
+
+        {/* Input area */}
+        <div className="p-4">
+          {mode === 'file' ? (
+            <div
+              {...getRootProps()}
+              className={`
+                relative flex flex-col items-center justify-center rounded-lg border cursor-pointer
+                transition-all min-h-[260px] p-6
+                ${isDragActive
+                  ? 'border-cyan-500 bg-cyan-500/5'
+                  : 'border-cyan-900/50 hover:border-cyan-700/60 hover:bg-cyan-950/20'}
+                ${loading ? 'pointer-events-none opacity-60' : ''}
+              `}
+            >
+              <input {...getInputProps()} />
+
+              {/* Camera reticle corners */}
+              <div className="reticle-all" />
+              <span className="reticle-bottom-left" />
+              <span className="reticle-bottom-right" />
+              {isDragActive && <div className="reticle-scan" />}
+
+              {displayPreview ? (
+                <img
+                  src={displayPreview}
+                  alt="Query face"
+                  className="max-h-56 max-w-full rounded object-contain z-10 relative"
+                />
+              ) : (
+                <div className="text-center space-y-4 z-10 relative">
+                  <div className="w-16 h-16 mx-auto border-2 border-cyan-900/60 rounded-full flex items-center justify-center">
+                    <span className="text-2xl text-cyan-900">◉</span>
+                  </div>
+                  <div>
+                    <p className="text-cyan-800 text-xs font-mono tracking-widest uppercase mb-1">
+                      {isDragActive ? 'Release to acquire target' : 'Drag & drop or click to select'}
+                    </p>
+                    <p className="text-slate-800 text-[10px] font-mono">JPG · PNG · WEBP</p>
+                  </div>
+                </div>
+              )}
+            </div>
+
           ) : (
-            <div className="text-center space-y-3">
-              <div className="text-5xl text-slate-500">📁</div>
-              <p className="text-slate-300 text-lg font-medium">
-                {isDragActive ? 'Drop the image here' : 'Drag & drop or click to select'}
-              </p>
-              <p className="text-slate-500 text-sm">JPG, PNG, WEBP</p>
+            <div className="space-y-3">
+              <div className="relative rounded-lg border border-cyan-900/50 overflow-hidden min-h-[260px] flex flex-col">
+                {/* Reticle corners on URL preview */}
+                <div className="reticle-all pointer-events-none" />
+                <span className="reticle-bottom-left pointer-events-none" />
+                <span className="reticle-bottom-right pointer-events-none" />
+
+                {displayPreview ? (
+                  <div className="flex-1 flex items-center justify-center p-4">
+                    <img
+                      src={displayPreview}
+                      alt="Query face preview"
+                      className="max-h-52 max-w-full rounded object-contain z-10"
+                      onError={(e) => {
+                        e.target.style.display = 'none'
+                        e.target.nextSibling.style.display = 'flex'
+                      }}
+                    />
+                    <div className="flex-1 items-center justify-center text-slate-700 p-8 text-center hidden">
+                      <div className="space-y-2 font-mono">
+                        <div className="text-2xl">✕</div>
+                        <p className="text-xs tracking-wide">Cannot preview URL directly<br/>Click Search to try anyway</p>
+                      </div>
+                    </div>
+                  </div>
+                ) : (
+                  <div className="flex-1 flex items-center justify-center text-slate-700 p-8 text-center">
+                    <div className="space-y-3 font-mono">
+                      <div className="text-3xl text-cyan-900/50">◈</div>
+                      <p className="text-xs tracking-widest uppercase text-cyan-900">Paste target URL below</p>
+                    </div>
+                  </div>
+                )}
+              </div>
+
+              <input
+                type="url"
+                value={urlInput}
+                onChange={(e) => setUrlInput(e.target.value)}
+                onKeyDown={(e) => e.key === 'Enter' && canSearch && !loading && handleSearch()}
+                placeholder="https://example.com/photo.jpg"
+                disabled={loading}
+                className="w-full rounded-lg border border-cyan-900/50 bg-slate-950 px-4 py-3 text-sm
+                  text-slate-300 placeholder-slate-700 font-mono
+                  focus:outline-none focus:border-cyan-700 disabled:opacity-50"
+              />
             </div>
           )}
         </div>
-      ) : (
-        <div className="space-y-3">
-          <div className="rounded-xl border-2 border-slate-600 overflow-hidden min-h-[280px] flex flex-col">
-            {displayPreview ? (
-              <div className="flex-1 flex items-center justify-center p-4">
-                <img
-                  src={displayPreview}
-                  alt="Query face preview"
-                  className="max-h-64 max-w-full rounded-lg object-contain shadow-lg"
-                  onError={(e) => {
-                    e.target.style.display = 'none'
-                    e.target.nextSibling.style.display = 'flex'
-                  }}
-                />
-                <div className="flex-1 items-center justify-center text-slate-500 p-8 text-center hidden">
-                  <div className="space-y-2">
-                    <div className="text-4xl">🚫</div>
-                    <p className="text-sm text-slate-500">Cannot preview this URL directly<br/>Click Search to try anyway</p>
-                  </div>
-                </div>
-              </div>
-            ) : (
-              <div className="flex-1 flex items-center justify-center text-slate-500 p-8 text-center">
-                <div className="space-y-3">
-                  <div className="text-5xl">🔗</div>
-                  <p className="text-lg text-slate-400">Paste an image URL below and click Search</p>
-                </div>
-              </div>
-            )}
-          </div>
-          <input
-            type="url"
-            value={urlInput}
-            onChange={(e) => setUrlInput(e.target.value)}
-            onKeyDown={(e) => e.key === 'Enter' && canSearch && !loading && handleSearch()}
-            placeholder="https://example.com/photo.jpg"
-            disabled={loading}
-            className="w-full rounded-xl border border-slate-600 bg-slate-800 px-4 py-3 text-base text-slate-200 placeholder-slate-500
-              focus:outline-none focus:border-sky-500 disabled:opacity-50"
-          />
-        </div>
-      )}
 
-      {/* Search button */}
-      <button
-        onClick={handleSearch}
-        disabled={!canSearch || loading || !backendReady}
-        className="w-full py-4 rounded-xl font-bold text-lg transition-all
-          bg-sky-600 hover:bg-sky-500 active:scale-[0.98] text-white shadow-lg shadow-sky-900/40
-          disabled:opacity-40 disabled:cursor-not-allowed
-          flex items-center justify-center gap-3"
-      >
-        {loading ? (
-          <>
-            <span className="animate-spin inline-block w-5 h-5 border-2 border-white border-t-transparent rounded-full" />
-            Searching...
-          </>
-        ) : !backendReady ? (
-          <>
-            <span className="animate-spin inline-block w-5 h-5 border-2 border-white border-t-transparent rounded-full" />
-            Backend Loading...
-          </>
-        ) : (
-          <>
-            <span>🔍</span>
-            Search
-          </>
-        )}
-      </button>
+        {/* Search button */}
+        <div className="px-4 pb-4">
+          <button
+            onClick={handleSearch}
+            disabled={!canSearch || loading || !backendReady}
+            className="w-full py-3 rounded-lg font-mono font-bold text-sm tracking-widest uppercase transition-all
+              disabled:opacity-30 disabled:cursor-not-allowed
+              flex items-center justify-center gap-3"
+            style={{
+              background: (!canSearch || loading || !backendReady)
+                ? undefined
+                : 'linear-gradient(90deg, #0891b2, #06b6d4)',
+              backgroundColor: (!canSearch || loading || !backendReady) ? '#0a1520' : undefined,
+              color: (!canSearch || loading || !backendReady) ? '#164e63' : '#050505',
+              border: '1px solid',
+              borderColor: (!canSearch || loading || !backendReady) ? '#0e3a4a' : '#06b6d4',
+              boxShadow: (!canSearch || loading || !backendReady) ? 'none' : '0 0 12px rgba(6,182,212,0.3)',
+            }}
+          >
+            {loading ? (
+              <>
+                <span className="animate-spin inline-block w-4 h-4 border-2 border-current border-t-transparent rounded-full" />
+                Scanning...
+              </>
+            ) : !backendReady ? (
+              <>
+                <span className="animate-spin inline-block w-4 h-4 border-2 border-current border-t-transparent rounded-full" />
+                System Initializing...
+              </>
+            ) : (
+              <>
+                <span>◉</span>
+                Acquire Target
+              </>
+            )}
+          </button>
+        </div>
+      </div>
 
       {error && (
-        <div className="rounded-xl border border-red-800 bg-red-900/30 px-4 py-3 text-red-400 text-sm">
-          {error}
+        <div className="rounded-lg border border-red-900/60 bg-red-950/30 px-4 py-3 text-red-500 text-xs font-mono tracking-wide">
+          ✕ {error}
         </div>
       )}
     </div>
