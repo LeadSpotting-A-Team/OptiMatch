@@ -5,41 +5,36 @@ from typing import List, Optional
 import faiss
 import numpy as np
 import time
+import config as _cfg  # private alias — avoids polluting the public module namespace
 
 # ── Constants ─────────────────────────────────────────────────────────────────
 
 # ArcFace produces 512-dimensional embeddings
 DIM = 512
 
-# Number of Voronoi clusters (cells) the index is divided into.
-# FAISS recommendation: nlist ≈ sqrt(N) for N vectors.
-# 4000 is optimized for datasets of 1M+ vectors.
-NLIST = 100
+# Single source of truth for the default cluster count (points to config).
+_DEFAULT_NLIST: int = _cfg.IVF_DEFAULT_NLIST
 
-# Default paths for the index file and its ID-mapping sidecar
+# Default file paths
 INDEX_PATH = "face_vault.index"
 MAP_PATH   = "face_vault.map.json"
 
-MINIMUM_TRAINING_DATA_SIZE = NLIST * 39
+# Kept for backward compatibility: simple_main.py references IVF.MINIMUM_TRAINING_DATA_SIZE.
+MINIMUM_TRAINING_DATA_SIZE = _DEFAULT_NLIST * 39
+
 # ── Module-level helpers (private) ────────────────────────────────────────────
 
 
-
-
-# What  : Creates a brand-new IndexIVFFlat wrapped in an IndexIDMap.
-#         Performs a dummy training pass with random unit-normalized vectors
-#         so that FAISS initializes its cluster centroids before any real data
-#         is added.  The dummy data does NOT stay in the index after training.
-# Gets  : nothing
-# Returns: a trained faiss.IndexIDMap wrapping a faiss.IndexIVFFlat
-def _make_trained_ivf() -> faiss.IndexIDMap:
+# Create a new trained IndexIVFFlat wrapped in an IndexIDMap.
+# Uses nlist*40 random unit vectors as dummy training data so FAISS can initialise centroids.
+def _make_trained_ivf(nlist: int) -> faiss.IndexIDMap:
     quantizer = faiss.IndexFlatIP(DIM)
-    ivf = faiss.IndexIVFFlat(quantizer, DIM, NLIST, faiss.METRIC_INNER_PRODUCT)
+    ivf = faiss.IndexIVFFlat(quantizer, DIM, nlist, faiss.METRIC_INNER_PRODUCT)
 
     # IVF must be trained before any vectors can be added.
-    # We generate NLIST*2 random unit vectors as a stand-in for real embeddings.
+    # We generate nlist*40 random unit vectors as a stand-in for real embeddings.
     rng = np.random.default_rng(42)
-    dummy = rng.standard_normal((NLIST * 40, DIM)).astype(np.float32)
+    dummy = rng.standard_normal((nlist * 40, DIM)).astype(np.float32)
     norms = np.linalg.norm(dummy, axis=1, keepdims=True)
     norms[norms < 1e-9] = 1.0   # guard against zero-norm edge case
     dummy /= norms
@@ -50,69 +45,81 @@ def _make_trained_ivf() -> faiss.IndexIDMap:
     return faiss.IndexIDMap(ivf)
 
 
-# What  : Loads the index from disk if the file already exists.
-#         If the file is missing, creates a new trained index and saves it.
-# Gets  : index_path — absolute or relative path to the .index file
-# Returns: a faiss.Index (IndexIDMap wrapping IndexIVFFlat) ready for use
-def _load_or_create_index(index_path: str) -> faiss.Index:
+# Load the index from disk if it exists; otherwise create, train, and save a new one.
+# nlist is only used when creating — an existing index already has its nlist baked in.
+def _load_or_create_index(index_path: str, nlist: int) -> faiss.Index:
     if os.path.isfile(index_path):
         return faiss.read_index(index_path)
 
-    index = _make_trained_ivf()
+    index = _make_trained_ivf(nlist)
     faiss.write_index(index, index_path)
     return index
 
 
 # ── Main class ────────────────────────────────────────────────────────────────
 
+# FAISS wrapper for ArcFace embeddings (IndexIVFFlat + IndexIDMap).
+# Metric : Inner Product (cosine similarity on unit vectors)
+# IDs    : caller supplies a string face_id; internally a sequential int person_id is used.
+#          _id_map[person_id] = face_id   (list, None for deleted slots)
+#          _face_index[face_id] = person_id  (dict, reverse lookup)
+# Both structures are saved to face_vault.map.json after every write.
 class FaceVectorStore:
-    """
-    Production-ready FAISS wrapper for storing and searching ArcFace embeddings.
 
-    Index type : IndexIVFFlat  (exact distances inside each cluster)
-    Metric     : Inner Product (equivalent to cosine similarity on unit vectors)
-    ID support : IndexIDMap    (sequential integer person_ids — hidden from the caller)
-    Persistence: index + ID-mapping JSON are saved to disk after every write
-
-    ID design
-    ─────────
-    The caller supplies a string `face_id`.  Internally we assign a sequential
-    integer `person_id` (0, 1, 2 …) which FAISS stores via add_with_ids.
-
-    The mapping is a plain list:
-
-        _id_map[person_id] = face_id   # None for deleted slots
-
-    This makes the "FAISS int → face_id" lookup a pure list index — O(1) with
-    zero hashing overhead.  A companion dict provides the reverse direction:
-
-        _face_index[face_id] = person_id   # O(1) reverse lookup
-
-    Both structures are persisted to a JSON sidecar (face_vault.map.json) so
-    they reload in sync with the FAISS index on every restart.
-    """
-
-    # What  : Loads the index and the ID-mapping sidecar from disk if they exist;
-    #         otherwise initialises fresh empty structures.
-    # Gets  : index_path — path to the .index file (default: face_vault.index)
-    #         map_path   — path to the .map.json sidecar (default: face_vault.map.json)
-    # Returns: nothing
+    # Load (or create) the index and map sidecar.
+    # nlist priority: stored JSON → constructor arg → config.IVF_NLIST → _DEFAULT_NLIST.
     def __init__(
         self,
         index_path: str = INDEX_PATH,
         map_path: str = MAP_PATH,
+        nlist: Optional[int] = None,
     ) -> None:
         self._path     = Path(index_path)
         self._map_path = Path(map_path)
-        self._index: faiss.Index = _load_or_create_index(str(self._path))
+
+        # Resolve nlist using the 4-step fallback chain before loading the index.
+        # Priority 1: value persisted in the JSON sidecar (the index was already
+        #             built with this nlist — loading a different value would
+        #             cause subtle mismatches between nlist and the actual structure).
+        stored_nlist = self._read_nlist_from_map()
+        if stored_nlist is not None:
+            self._nlist: int = stored_nlist
+        elif nlist is not None:
+            # Priority 2: caller-supplied constructor argument
+            self._nlist = nlist
+        elif _cfg.IVF_NLIST != _DEFAULT_NLIST:
+            # Priority 3: config.IVF_NLIST only when it was explicitly overridden
+            # (i.e. differs from the default), so a vanilla config doesn't shadow
+            # an already-stored value when we still fall through to priority 4.
+            self._nlist = _cfg.IVF_NLIST
+        else:
+            # Priority 4: hardcoded default — final fallback
+            self._nlist = _DEFAULT_NLIST
+
+        self._index: faiss.Index = _load_or_create_index(str(self._path), self._nlist)
         self._load_map()
 
     # ── ID-mapping helpers ────────────────────────────────────────────────────
 
-    # What  : Populates _id_map and _face_index from the JSON sidecar.
-    #         If the file does not exist yet, starts with empty structures.
-    # Gets  : nothing (reads self._map_path)
-    # Returns: nothing
+    # Read only the "nlist" key from the JSON sidecar.
+    # Returns None if the file is missing (fresh store), _DEFAULT_NLIST if the key
+    # is absent (legacy index — backward compat), or the stored int if present.
+    def _read_nlist_from_map(self) -> Optional[int]:
+        if not self._map_path.is_file():
+            # No sidecar at all — this is a fresh store, not a legacy one.
+            return None
+        try:
+            data: dict = json.loads(self._map_path.read_text(encoding="utf-8"))
+            value = data.get("nlist")
+            if value is not None:
+                return int(value)
+            # File exists but key is absent → legacy index; pin to default.
+            return _DEFAULT_NLIST
+        except (json.JSONDecodeError, ValueError):
+            # Corrupt or unreadable JSON — fall back to default for safety.
+            return _DEFAULT_NLIST
+
+    # Load id_map list from JSON and rebuild the reverse face_index dict.
     def _load_map(self) -> None:
         if self._map_path.is_file():
             data: dict = json.loads(self._map_path.read_text(encoding="utf-8"))
@@ -129,23 +136,18 @@ class FaceVectorStore:
             if face_id is not None
         }
 
-    # What  : Writes _id_map to the JSON sidecar atomically (temp + rename).
-    #         Called immediately after every faiss.write_index so both files
-    #         always stay in sync.
-    # Gets  : nothing
-    # Returns: nothing
+    # Atomically write nlist + id_map to JSON (temp file → rename).
     def _save_map(self) -> None:
         tmp = str(self._map_path) + ".tmp"
+        # Persist nlist alongside id_map so that the next load always uses the
+        # same nlist the index was built with, regardless of config changes.
         Path(tmp).write_text(
-            json.dumps({"id_map": self._id_map}), encoding="utf-8"
+            json.dumps({"nlist": self._nlist, "id_map": self._id_map}),
+            encoding="utf-8",
         )
         os.replace(tmp, str(self._map_path))
 
-    # What  : Appends a new face_id to _id_map and updates the reverse dict.
-    #         The new person_id is simply len(_id_map) before the append —
-    #         equivalent to the next available array index.
-    # Gets  : face_id — caller-supplied string identifier; must be unique
-    # Returns: the newly assigned person_id (int)
+    # Append face_id to _id_map and return its new sequential person_id.
     def _register(self, face_id: str) -> int:
         if face_id in self._face_index:
             raise ValueError(f"face_id '{face_id}' already exists in the index.")
@@ -154,10 +156,7 @@ class FaceVectorStore:
         self._face_index[face_id] = person_id
         return person_id
 
-    # What  : Marks a slot in _id_map as deleted (sets it to None) and removes
-    #         the face_id from the reverse dict.
-    # Gets  : face_id — caller-supplied identifier to remove
-    # Returns: the person_id (int) that was freed (needed for FAISS removal)
+    # Mark face_id slot as None in _id_map and remove it from the reverse dict.
     def _unregister(self, face_id: str) -> int:
         if face_id not in self._face_index:
             raise KeyError(f"face_id '{face_id}' not found in the index.")
@@ -165,23 +164,26 @@ class FaceVectorStore:
         self._id_map[person_id] = None      # keep list length stable; slot is dead
         return person_id
 
-    # What  : Convenience property that drills through the IndexIDMap wrapper
-    #         to reach the underlying IndexIVFFlat.
-    # Needed to set nprobe and iterate the inverted lists during extraction.
-    # Gets  : nothing
-    # Returns: faiss.IndexIVFFlat
+    # Unwrap IndexIDMap to reach the inner IndexIVFFlat (needed for nprobe and invlists).
     @property
     def _ivf(self) -> faiss.IndexIVFFlat:
-        # self._index is IndexIDMap; .index is its wrapped sub-index
         return faiss.downcast_index(self._index.index)
+
+    # ── Public configuration properties ───────────────────────────────────────
+
+    # Number of Voronoi clusters this index was built with.
+    @property
+    def nlist(self) -> int:
+        return self._nlist
+
+    # Minimum vectors needed to train: FAISS requires at least 39 × nlist.
+    @property
+    def min_training_size(self) -> int:
+        return self._nlist * 39
 
     # ── Write operations ──────────────────────────────────────────────────────
 
-    # What  : Adds a single face embedding to the index and saves to disk.
-    #         Use add_faces_batch for bulk inserts (much faster for many faces).
-    # Gets  : embedding — 1-D numpy array of shape (512,), already L2-normalised
-    #         face_id   — unique string identifier for this face
-    # Returns: nothing
+    # Add one embedding + face_id and save both index and map to disk.
     def add_face(self, embedding: np.ndarray, face_id: str) -> None:
         vec = np.asarray(embedding, dtype=np.float32).flatten()
 
@@ -200,15 +202,8 @@ class FaceVectorStore:
         faiss.write_index(self._index, str(self._path))
         self._save_map()
 
-    # What  : Adds many face embeddings to the index in a single FAISS call,
-    #         then saves to disk once.  Preferred over calling add_face in a loop
-    #         because the write_index cost is paid only once.
-    #         On PermissionError when saving the map file, retries up to
-    #         save_retries times so the caller does not need to retry the whole batch.
-    # Gets  : embeddings    — 2-D numpy array of shape (N, 512), L2-normalised rows
-    #         face_ids      — list of N unique string identifiers (one per embedding)
-    #         save_retries  — optional; number of retries for _save_map() on failure (default 3)
-    # Returns: nothing
+    # Add N embeddings in one FAISS call and save once.
+    # Retries _save_map on PermissionError (Windows file-lock protection).
     def add_faces_batch(
         self,
         embeddings: np.ndarray,
@@ -250,9 +245,7 @@ class FaceVectorStore:
                     raise
                 time.sleep(0.25)
 
-    # What  : Removes a single face from the index by its face_id, then saves.
-    # Gets  : face_id — the string identifier that was used when adding the face
-    # Returns: nothing
+    # Remove a face by face_id and save both index and map to disk.
     def delete_face(self, face_id: str) -> None:
         person_id = self._unregister(face_id)
 
@@ -264,18 +257,14 @@ class FaceVectorStore:
 
     # ── Read operations ───────────────────────────────────────────────────────
 
-    # What  : Searches the index for the K nearest neighbours of a query embedding.
-    #         nprobe controls the accuracy/speed trade-off: higher = more accurate
-    #         but slower (scans more clusters).
-    # Gets  : query_embedding — 1-D numpy array of shape (512,), L2-normalised
-    #         k              — number of top results to return (default 5)
-    #         nprobe         — how many IVF clusters to scan per query (default 20)
-    # Returns: list of dicts sorted by score descending, e.g.
-    #          [{"face_id": "abc123", "score": 0.97}, ...]
-    #          An empty list is returned when the index contains no vectors.
+    # Return top-k nearest faces for a query embedding.
+    # nprobe controls accuracy vs. speed: higher = more clusters scanned.
     def search_face(
-        self, query_embedding: np.ndarray, k: int = 5, nprobe: int = 20
+        self, query_embedding: np.ndarray, k: int = 5, nprobe: int = 5
     ) -> List[dict]:
+
+        start_time = time.time() * 1000  # milliseconds
+
         vec = np.asarray(query_embedding, dtype=np.float32).flatten().reshape(1, -1)
 
         if vec.shape[1] != DIM:
@@ -294,6 +283,12 @@ class FaceVectorStore:
 
         # labels[0, j] == -1 means FAISS found no match for that slot (sparse index).
         # person_id is the direct index into _id_map — O(1) list lookup.
+        end_time = time.time() * 1000  # milliseconds
+        debug_file = os.path.join("sandbox", "debug", "search_time.txt")
+        os.makedirs(os.path.dirname(debug_file), exist_ok=True)
+        with open(debug_file, "a") as f:
+            f.write(f"Search time: {end_time - start_time} milliseconds , nprobe: {nprobe} , k: {k}\n")
+
         return [
             {
                 "face_id": self._id_map[int(labels[0, j])],
@@ -303,39 +298,38 @@ class FaceVectorStore:
             if labels[0, j] >= 0
         ]
 
-    # What  : Returns the total number of face vectors currently stored in the index.
-    # Gets  : nothing
-    # Returns: int
+    # Return total number of stored vectors.
     def get_total_count(self) -> int:
         return int(self._index.ntotal)
 
+    # Return all stored vectors as a float32 array of shape (N, 512).
     def get_all_embeddings(self) -> np.ndarray:
-        #Returns all vectors currently in the index, shape (N, DIM).
         vecs, _ = self._extract_all_vectors()
         return vecs
 
     # ── Maintenance ───────────────────────────────────────────────────────────
 
-    # What  : Re-trains the IVF index using real face embeddings instead of the
-    #         initial dummy data.  Better centroids improve search accuracy.
-    #         All existing vectors are preserved — they are extracted, the index
-    #         is rebuilt with the new centroids, and they are re-inserted with
-    #         the same person_ids so _id_map stays valid without any changes.
-    #         Uses a temp-file + atomic rename so the original index is never
-    #         left in a corrupt state if the process crashes mid-way.
-    # Gets  : new_training_data — 2-D numpy array of shape (N, 512), L2-normalised.
-    #         N must be at least NLIST * 39 (≈156k for nlist=4000) for stable centroids.
-    # Returns: nothing (updates self._index in place and overwrites the index file)
-    def rebuild_and_train(self, new_training_data: np.ndarray) -> None:
+    # Retrain the index on real data. Optionally change nlist at the same time.
+    # All existing vectors are preserved and re-inserted with their original person_ids.
+    def rebuild_and_train(
+        self,
+        new_training_data: np.ndarray,
+        new_nlist: Optional[int] = None,
+    ) -> None:
+        # Decide which nlist to use for the rebuilt index.
+        # Keeping new_nlist separate from self._nlist until after a successful
+        # rebuild ensures the instance stays consistent if anything goes wrong.
+        effective_nlist = new_nlist if new_nlist is not None else self._nlist
+
         train = np.ascontiguousarray(
             np.asarray(new_training_data, dtype=np.float32).reshape(-1, DIM)
         )
 
-        min_required = NLIST * 39
+        min_required = effective_nlist * 39
         if train.shape[0] < min_required:
             raise ValueError(
                 f"Training data needs at least {min_required} vectors "
-                f"(39 × nlist={NLIST}); got {train.shape[0]}"
+                f"(39 × nlist={effective_nlist}); got {train.shape[0]}"
             )
 
         # Step 1 — snapshot all vectors and their person_ids before touching the index.
@@ -345,7 +339,7 @@ class FaceVectorStore:
 
         # Step 2 — build a fresh IVF and train it on the real data distribution
         quantizer = faiss.IndexFlatIP(DIM)
-        ivf = faiss.IndexIVFFlat(quantizer, DIM, NLIST, faiss.METRIC_INNER_PRODUCT)
+        ivf = faiss.IndexIVFFlat(quantizer, DIM, effective_nlist, faiss.METRIC_INNER_PRODUCT)
         ivf.train(train)
         new_index = faiss.IndexIDMap(ivf)
 
@@ -362,18 +356,15 @@ class FaceVectorStore:
         os.replace(tmp_path, str(self._path))
 
         self._index = new_index
-        # _id_map is unchanged — no _save_map() call needed here.
 
-    # What  : Internal helper used by rebuild_and_train.
-    #         Walks every inverted list (cluster) of the IVF index and collects
-    #         all stored vectors together with their person_ids (the sequential
-    #         integers used as FAISS IDs).
-    #         IndexIVFFlat does NOT store vectors in a single flat array — they are
-    #         scattered across nlist separate inverted lists, one per cluster.
-    # Gets  : nothing (reads from self._index and self._ivf)
-    # Returns: tuple (vecs, person_ids)
-    #          vecs       — float32 array of shape (N, 512)
-    #          person_ids — int64 array of shape (N,) with the sequential IDs
+        # Commit the (possibly new) nlist and persist both files in sync.
+        # This must happen after the successful write above so that if write_index
+        # raises, _nlist and the JSON sidecar remain unchanged.
+        self._nlist = effective_nlist
+        self._save_map()
+
+    # Walk all IVF inverted lists and collect every stored vector + its person_id.
+    # IndexIVFFlat scatters vectors across nlist separate lists, not a flat array.
     def _extract_all_vectors(self) -> tuple[np.ndarray, np.ndarray]:
         # id_map[internal_idx] = person_id
         # IndexIDMap maintains its own internal sequential positions; id_map
