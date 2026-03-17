@@ -18,6 +18,12 @@ backend/embeddings_models/models/*
 !backend/embeddings_models/models/.gitkeep
 #ignore metadata.db file
 metadata.db
-
+#ignore face_vault.index file
+face_vault.index
+#ignore face_vault.map.json file
+face_vault.map.json
+#ignore sandbox/face_vector_store.index file
+sandbox/face_vector_store.index
 #ignore all files in node_modules folder
 node_modules/
+
