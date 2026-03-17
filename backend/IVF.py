@@ -19,7 +19,7 @@ NLIST = 100
 INDEX_PATH = "face_vault.index"
 MAP_PATH   = "face_vault.map.json"
 
-
+MINIMUM_TRAINING_DATA_SIZE = NLIST * 39
 # ── Module-level helpers (private) ────────────────────────────────────────────
 
 
@@ -291,6 +291,11 @@ class FaceVectorStore:
     # Returns: int
     def get_total_count(self) -> int:
         return int(self._index.ntotal)
+
+    def get_all_embeddings(self) -> np.ndarray:
+        #Returns all vectors currently in the index, shape (N, DIM).
+        vecs, _ = self._extract_all_vectors()
+        return vecs
 
     # ── Maintenance ───────────────────────────────────────────────────────────
 

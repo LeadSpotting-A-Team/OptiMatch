@@ -7,7 +7,7 @@ HARVESTED_FACES_TABLE_NAME = 'harvested_faces_TO_post_id'
 POSTS_METADATA_TABLE_NAME = 'posts_metadata'
 
 class Post_Metadata:
-    def __init__(self, post_id , media_url , link_to_post , timestamp , platform):
+    def __init__(self, post_id , media_url , link_to_post = None, timestamp = None, platform = None):
         self.post_id = post_id
         self.media_url = media_url
         self.link_to_post = link_to_post
