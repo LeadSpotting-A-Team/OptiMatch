@@ -1,7 +1,7 @@
 import { useState, useCallback } from 'react'
 import { useDropzone } from 'react-dropzone'
 
-export default function QueryFaceUpload({ onSearchFile, onSearchUrl, onUrlChange, loading, error, previewBase64, backendReady }) {
+export default function QueryFaceUpload({ onSearchFile, onSearchUrl, onFileChange, onUrlChange, loading, error, fileQueryFace, urlQueryFace, backendReady }) {
   const [mode, setMode] = useState('file')
   const [urlInput, setUrlInput] = useState('')
   const [pendingFile, setPendingFile] = useState(null)
@@ -12,10 +12,9 @@ export default function QueryFaceUpload({ onSearchFile, onSearchUrl, onUrlChange
     if (!file) return
     setPendingFile(file)
     setPendingPreview(URL.createObjectURL(file))
-    // Clear previous search state so the new local preview takes priority
-    // over any base64 face that was returned from a prior search request
-    onUrlChange?.()
-  }, [onUrlChange])
+    // Notify App so it clears the file-mode search result; the blob URL becomes the active preview
+    onFileChange?.()
+  }, [onFileChange])
 
   const { getRootProps, getInputProps, isDragActive } = useDropzone({
     onDrop,
@@ -34,11 +33,14 @@ export default function QueryFaceUpload({ onSearchFile, onSearchUrl, onUrlChange
 
   const canSearch = mode === 'file' ? !!pendingFile : urlInput.trim().length > 0
 
-  const displayPreview = mode === 'url' && urlInput.trim()
-    ? urlInput.trim()
-    : previewBase64
-      ? `data:image/jpeg;base64,${previewBase64}`
-      : pendingPreview
+  // Each mode maintains a fully independent preview — no state bleeds across tabs
+  const filePreview = pendingPreview
+    || (fileQueryFace ? `data:image/jpeg;base64,${fileQueryFace}` : null)
+
+  const urlPreview = urlInput.trim()
+    || (urlQueryFace ? `data:image/jpeg;base64,${urlQueryFace}` : null)
+
+  const displayPreview = mode === 'file' ? filePreview : urlPreview
 
   return (
     <div className="space-y-4">

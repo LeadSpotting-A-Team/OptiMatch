@@ -8,14 +8,18 @@ import './cyber.css'
 const API_BASE = import.meta.env.VITE_API_URL || ''
 
 export default function App() {
-  const [queryFaces, setQueryFaces] = useState([])
-  const [results, setResults] = useState([])
-  const [hasSearched, setHasSearched] = useState(false)
-  const [minScore, setMinScore] = useState(50)
-  const [loading, setLoading] = useState(false)
-  const [error, setError] = useState(null)
-  const [modalState, setModalState] = useState(null)
-  const [backendReady, setBackendReady] = useState(false)
+  // Each input mode keeps its own cropped-face result so switching tabs never bleeds state
+  const [fileQueryFace, setFileQueryFace] = useState(null)
+  const [urlQueryFace, setUrlQueryFace]   = useState(null)
+  // Always holds the query face from the most recent completed search (used by the comparison modal)
+  const [lastQueryFace, setLastQueryFace] = useState(null)
+  const [results, setResults]             = useState([])
+  const [hasSearched, setHasSearched]     = useState(false)
+  const [minScore, setMinScore]           = useState(50)
+  const [loading, setLoading]             = useState(false)
+  const [error, setError]                 = useState(null)
+  const [modalState, setModalState]       = useState(null)
+  const [backendReady, setBackendReady]   = useState(false)
 
   // Poll /health until backend is up
   useEffect(() => {
@@ -36,7 +40,8 @@ export default function App() {
     return () => clearInterval(interval)
   }, [])
 
-  const runSearch = useCallback(async (fetchFn) => {
+  // onFaceResult: (face: string | null) => void  — mode-specific setter passed by the caller
+  const runSearch = useCallback(async (fetchFn, onFaceResult) => {
     setLoading(true)
     setError(null)
     try {
@@ -46,12 +51,14 @@ export default function App() {
         throw new Error(err.detail || 'Search failed')
       }
       const data = await res.json()
-      setQueryFaces(data.query_faces || [])
+      const face  = data.query_faces?.[0] ?? null
+      onFaceResult(face)
+      setLastQueryFace(face)
       setResults(data.results || [])
       setHasSearched(true)
     } catch (e) {
       setError(e.message)
-      setQueryFaces([])
+      onFaceResult(null)
       setResults([])
       setHasSearched(true)
     } finally {
@@ -60,31 +67,46 @@ export default function App() {
   }, [])
 
   const handleSearchFile = useCallback((file) => {
-    runSearch(() => {
-      const formData = new FormData()
-      formData.append('file', file)
-      return fetch(`${API_BASE}/search`, { method: 'POST', body: formData })
-    })
+    runSearch(
+      () => {
+        const formData = new FormData()
+        formData.append('file', file)
+        return fetch(`${API_BASE}/search`, { method: 'POST', body: formData })
+      },
+      (face) => setFileQueryFace(face),
+    )
   }, [runSearch])
 
   const handleSearchUrl = useCallback((url) => {
-    runSearch(() => {
-      const formData = new FormData()
-      formData.append('url', url)
-      return fetch(`${API_BASE}/search/url`, { method: 'POST', body: formData })
-    })
+    runSearch(
+      () => {
+        const formData = new FormData()
+        formData.append('url', url)
+        return fetch(`${API_BASE}/search/url`, { method: 'POST', body: formData })
+      },
+      (face) => setUrlQueryFace(face),
+    )
   }, [runSearch])
 
-  const handleUrlChange = useCallback(() => {
+  // Called when the user selects a new file — clears only the file-mode result
+  const handleFileChange = useCallback(() => {
+    setFileQueryFace(null)
     setResults([])
-    setQueryFaces([])
+    setHasSearched(false)
+    setError(null)
+  }, [])
+
+  // Called when the user edits the URL input — clears only the url-mode result
+  const handleUrlChange = useCallback(() => {
+    setUrlQueryFace(null)
+    setResults([])
     setHasSearched(false)
     setError(null)
   }, [])
 
   const openComparison = (result) => {
     setModalState({
-      queryFaceBase64: queryFaces[0] || null,
+      queryFaceBase64: lastQueryFace,
       matchFaceId: result.face_id,
       matchScore: result.score,
       matchMetadata: result,
@@ -139,10 +161,12 @@ export default function App() {
           <QueryFaceUpload
             onSearchFile={handleSearchFile}
             onSearchUrl={handleSearchUrl}
+            onFileChange={handleFileChange}
             onUrlChange={handleUrlChange}
             loading={loading}
             error={error}
-            previewBase64={queryFaces[0]}
+            fileQueryFace={fileQueryFace}
+            urlQueryFace={urlQueryFace}
             backendReady={backendReady}
           />
         </aside>
