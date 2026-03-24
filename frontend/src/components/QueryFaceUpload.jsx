@@ -12,7 +12,10 @@ export default function QueryFaceUpload({ onSearchFile, onSearchUrl, onUrlChange
     if (!file) return
     setPendingFile(file)
     setPendingPreview(URL.createObjectURL(file))
-  }, [])
+    // Clear previous search state so the new local preview takes priority
+    // over any base64 face that was returned from a prior search request
+    onUrlChange?.()
+  }, [onUrlChange])
 
   const { getRootProps, getInputProps, isDragActive } = useDropzone({
     onDrop,
