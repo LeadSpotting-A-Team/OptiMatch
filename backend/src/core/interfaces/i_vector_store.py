@@ -57,14 +57,3 @@ class IVectorStore(ABC):
         # Returns all stored embedding vectors as a float32 array of shape (N, 512).
         # Returns an empty array when the index is empty.
         ...
-
-    @abstractmethod
-    def rebuild_index(
-        self,
-        training_data: np.ndarray,
-        new_nlist: Optional[int] = None,
-    ) -> None:
-        # Retrains the index on training_data, optionally changing the cluster count.
-        # All existing vectors are preserved and re-inserted after training.
-        # Raises ValueError if training_data contains fewer than 39 * nlist vectors.
-        ...

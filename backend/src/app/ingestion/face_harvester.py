@@ -14,13 +14,13 @@ from __future__ import annotations
 
 import os
 
-from src.app.io import files_loader, url_loader
+from src.core.io import url_loader, files_loader
 from src.core.entities.post_metadata import PostMetadata
 from src.core.interfaces.i_face_detector import IFaceDetector
 from src.core.interfaces.i_metadata_repository import IMetadataRepository
-from src.core.services import face_id_service, harvesting_service
-
-
+import src.core.services.face_id_service as face_id_service
+import src.core.services.harvesting_service as harvesting_service
+from src.app.config import *
 # Raised when media processing fails for a recoverable reason (bad URL,
 # unsupported format, etc.) so callers can log and continue.
 class IngestionException(Exception):
@@ -51,10 +51,10 @@ def ingest_post(
     post: PostMetadata,
     detector: IFaceDetector,
     repository: IMetadataRepository,
-    faces_output_dir: str,
-    download_dir: str,
-    min_confidence: float,
-    min_face_size: int,
+    faces_output_dir: str = FACES_DIR,
+    download_dir: str = DOWNLOAD_DIR,
+    min_confidence: float = FACE_CONFIDENCE_THRESHOLD,
+    min_face_size: int = MIN_FACE_SIZE,
 ) -> list[dict]:
     local_file: str | None = None
     try:
