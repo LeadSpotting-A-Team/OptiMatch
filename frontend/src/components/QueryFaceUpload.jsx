@@ -1,11 +1,26 @@
 import { useState, useCallback } from 'react'
 import { useDropzone } from 'react-dropzone'
 
-export default function QueryFaceUpload({ onSearchFile, onSearchUrl, onFileChange, onUrlChange, loading, error, fileQueryFace, urlQueryFace, backendReady }) {
+export default function QueryFaceUpload({
+  searchMode = 'library',
+  onSearchFile,
+  onSearchUrl,
+  onFileChange,
+  onUrlChange,
+  loading,
+  error,
+  fileQueryFace,
+  urlQueryFace,
+  backendReady,
+}) {
   const [mode, setMode] = useState('file')
   const [urlInput, setUrlInput] = useState('')
   const [pendingFile, setPendingFile] = useState(null)
   const [pendingPreview, setPendingPreview] = useState(null)
+  const [firstName, setFirstName] = useState('')
+  const [lastName, setLastName] = useState('')
+
+  const isLeadspotting = searchMode === 'leadspotting'
 
   const onDrop = useCallback((acceptedFiles) => {
     const file = acceptedFiles[0]
@@ -24,13 +39,18 @@ export default function QueryFaceUpload({ onSearchFile, onSearchUrl, onFileChang
 
   const handleSearch = () => {
     if (mode === 'file' && pendingFile) {
-      onSearchFile(pendingFile)
+      isLeadspotting
+        ? onSearchFile(pendingFile, firstName.trim(), lastName.trim())
+        : onSearchFile(pendingFile)
     } else if (mode === 'url' && urlInput.trim()) {
-      onSearchUrl(urlInput.trim())
+      isLeadspotting
+        ? onSearchUrl(urlInput.trim(), firstName.trim(), lastName.trim())
+        : onSearchUrl(urlInput.trim())
     }
   }
 
-  const canSearch = mode === 'file' ? !!pendingFile : urlInput.trim().length > 0
+  const namesFilled = !isLeadspotting || (firstName.trim().length > 0 && lastName.trim().length > 0)
+  const canSearch = (mode === 'file' ? !!pendingFile : urlInput.trim().length > 0) && namesFilled
 
   const filePreview = pendingPreview
     || (fileQueryFace ? `data:image/jpeg;base64,${fileQueryFace}` : null)
@@ -159,6 +179,42 @@ export default function QueryFaceUpload({ onSearchFile, onSearchUrl, onFileChang
                   text-gray-700 placeholder-gray-400
                   focus:outline-none focus:border-blue-500 focus:ring-1 focus:ring-blue-200 disabled:opacity-50"
               />
+            </div>
+          )}
+
+          {/* Leadspotting name fields */}
+          {isLeadspotting && (
+            <div className="mt-4 grid grid-cols-2 gap-3">
+              <div>
+                <label className="block text-xs font-semibold text-gray-500 uppercase tracking-wide mb-1">
+                  First Name
+                </label>
+                <input
+                  type="text"
+                  value={firstName}
+                  onChange={(e) => setFirstName(e.target.value)}
+                  placeholder="John"
+                  disabled={loading}
+                  className="w-full rounded-lg border border-blue-200 bg-white px-3 py-2.5 text-sm
+                    text-gray-700 placeholder-gray-400
+                    focus:outline-none focus:border-blue-500 focus:ring-1 focus:ring-blue-200 disabled:opacity-50"
+                />
+              </div>
+              <div>
+                <label className="block text-xs font-semibold text-gray-500 uppercase tracking-wide mb-1">
+                  Last Name
+                </label>
+                <input
+                  type="text"
+                  value={lastName}
+                  onChange={(e) => setLastName(e.target.value)}
+                  placeholder="Doe"
+                  disabled={loading}
+                  className="w-full rounded-lg border border-blue-200 bg-white px-3 py-2.5 text-sm
+                    text-gray-700 placeholder-gray-400
+                    focus:outline-none focus:border-blue-500 focus:ring-1 focus:ring-blue-200 disabled:opacity-50"
+                />
+              </div>
             </div>
           )}
         </div>
