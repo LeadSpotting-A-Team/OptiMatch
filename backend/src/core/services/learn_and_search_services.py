@@ -1,4 +1,4 @@
-from io import IO
+from typing import IO
 from src.core.io.dataset_reader import read_posts_from_csv
 from src.core.interfaces.i_vector_store import IVectorStore
 from src.core.interfaces.i_face_detector import IFaceDetector
@@ -20,7 +20,7 @@ import numpy as np
 #this function returns the number of valid posts that were learned.
 def learn_service(csv_file: IO[str] , detector: IFaceDetector , embedding_model: IEmbeddingModel , vector_store: IVectorStore , metadata_repository: IMetadataRepository) -> int:
     
-    valid_post_count = 0;
+    valid_post_count = 0
     
     posts = read_posts_from_csv(csv_file)
     valid_embeddings = []

@@ -1,89 +1,73 @@
-/* ── Cyber-Investigator Theme ─────────────────────────────────────────── */
+/* ── Leadspotting Theme ───────────────────────────────────────────────── */
 
-/* Dotted grid overlay for the results gallery */
-.cyber-grid {
-  background-color: #050505;
-  background-image: radial-gradient(circle, #0e7490 1px, transparent 1px);
+/* Color tokens */
+:root {
+  --ls-blue:        #1565C0;
+  --ls-blue-mid:    #1E88E5;
+  --ls-blue-light:  #42A5F5;
+  --ls-blue-pale:   #E3F0FC;
+  --ls-green:       #7CB342;
+  --ls-green-light: #EEF7E0;
+  --ls-bg-page:     #F5F8FC;
+  --ls-bg-card:     #FFFFFF;
+  --ls-border:      #D6E8F8;
+  --ls-text:        #1A2B4A;
+  --ls-text-muted:  #6B7E99;
+}
+
+/* Utility classes */
+.ls-bg-page   { background-color: var(--ls-bg-page); }
+.ls-card      { background: var(--ls-bg-card); border: 1px solid var(--ls-border); box-shadow: 0 1px 4px rgba(21,101,192,0.07); }
+.ls-border    { border-color: var(--ls-border); }
+.ls-header    { background: #FFFFFF; border-bottom: 1px solid var(--ls-border); }
+
+/* Tailwind-compatible color helpers used inline */
+.bg-ls-blue   { background-color: var(--ls-blue); }
+.bg-ls-green  { background-color: var(--ls-green); }
+.text-ls-blue { color: var(--ls-blue); }
+.text-ls-green{ color: var(--ls-green); }
+.border-ls-blue{ border-color: var(--ls-blue); }
+.w-2.h-2.rounded-full.bg-ls-green { background-color: var(--ls-green); }
+
+/* Results grid background */
+.ls-grid {
+  background-color: var(--ls-bg-page);
+  background-image: radial-gradient(circle, #D0E8F8 1px, transparent 1px);
   background-size: 28px 28px;
-  background-position: 0 0;
 }
 
-/* Subtle scanline overlay (pseudo-element via wrapper class) */
-.cyber-scanlines::after {
-  content: '';
-  position: absolute;
-  inset: 0;
-  background: repeating-linear-gradient(
-    0deg,
-    transparent,
-    transparent 2px,
-    rgba(0, 0, 0, 0.08) 2px,
-    rgba(0, 0, 0, 0.08) 4px
-  );
-  pointer-events: none;
-  z-index: 0;
+/* High-score card glow (blue, not cyan) */
+.ls-glow {
+  border-color: var(--ls-blue-mid) !important;
+  box-shadow: 0 0 0 2px rgba(30,136,229,0.20), 0 2px 10px rgba(30,136,229,0.12);
 }
 
-/* Glowing cyan border for high-score cards (>85%) */
-.cyber-glow {
-  border-color: #06b6d4 !important;
-  box-shadow: 0 0 6px 1px rgba(6, 182, 212, 0.45),
-              0 0 14px 2px rgba(6, 182, 212, 0.20);
+@keyframes ls-pulse {
+  0%, 100% { box-shadow: 0 0 0 2px rgba(30,136,229,0.25), 0 2px 10px rgba(30,136,229,0.15); }
+  50%       { box-shadow: 0 0 0 3px rgba(30,136,229,0.40), 0 4px 18px rgba(30,136,229,0.25); }
+}
+.ls-glow-pulse {
+  animation: ls-pulse 2s ease-in-out infinite;
 }
 
-/* Pulsing glow animation for very high scores */
-@keyframes cyber-pulse {
-  0%, 100% { box-shadow: 0 0 6px 1px rgba(6, 182, 212, 0.45), 0 0 14px 2px rgba(6, 182, 212, 0.20); }
-  50%       { box-shadow: 0 0 10px 3px rgba(6, 182, 212, 0.70), 0 0 22px 5px rgba(6, 182, 212, 0.35); }
-}
-.cyber-glow-pulse {
-  animation: cyber-pulse 2s ease-in-out infinite;
+/* Modal overlay */
+.ls-modal-overlay {
+  backdrop-filter: blur(6px) saturate(0.9);
+  -webkit-backdrop-filter: blur(6px) saturate(0.9);
+  background: rgba(245, 248, 252, 0.80);
 }
 
-/* ── Camera Reticle on Dropzone ───────────────────────────────────────── */
-.reticle {
-  position: relative;
-}
-.reticle::before,
-.reticle::after {
-  content: '';
-  position: absolute;
-  width: 20px;
-  height: 20px;
-  pointer-events: none;
-  z-index: 10;
+.ls-modal-panel {
+  background: #FFFFFF;
+  border: 1px solid var(--ls-border);
+  box-shadow: 0 8px 40px rgba(21,101,192,0.14);
 }
 
-/* Top-left corner */
-.reticle-tl::before {
-  top: 10px;
-  left: 10px;
-  border-top: 2px solid #06b6d4;
-  border-left: 2px solid #06b6d4;
-}
-/* Top-right corner */
-.reticle-tr::before {
-  top: 10px;
-  right: 10px;
-  border-top: 2px solid #06b6d4;
-  border-right: 2px solid #06b6d4;
-}
-/* Bottom-left corner */
-.reticle-bl::before {
-  bottom: 10px;
-  left: 10px;
-  border-bottom: 2px solid #06b6d4;
-  border-left: 2px solid #06b6d4;
-}
-/* Bottom-right corner */
-.reticle-br::before {
-  bottom: 10px;
-  right: 10px;
-  border-bottom: 2px solid #06b6d4;
-  border-right: 2px solid #06b6d4;
+.ls-divider {
+  border-color: var(--ls-border);
 }
 
-/* All four corners in one element using outline trick */
+/* Keep reticle classes for ComparisonModal (now in subtle blue) */
 .reticle-all {
   position: absolute;
   inset: 0;
@@ -95,25 +79,23 @@
   position: absolute;
   top: 10px; left: 10px;
   width: 22px; height: 22px;
-  border-top: 2px solid #06b6d4;
-  border-left: 2px solid #06b6d4;
+  border-top: 2px solid var(--ls-blue-light);
+  border-left: 2px solid var(--ls-blue-light);
 }
 .reticle-all::after {
   content: '';
   position: absolute;
   top: 10px; right: 10px;
   width: 22px; height: 22px;
-  border-top: 2px solid #06b6d4;
-  border-right: 2px solid #06b6d4;
+  border-top: 2px solid var(--ls-blue-light);
+  border-right: 2px solid var(--ls-blue-light);
 }
-
-/* Additional bottom corners via a child span */
 .reticle-bottom-left {
   position: absolute;
   bottom: 10px; left: 10px;
   width: 22px; height: 22px;
-  border-bottom: 2px solid #06b6d4;
-  border-left: 2px solid #06b6d4;
+  border-bottom: 2px solid var(--ls-blue-light);
+  border-left: 2px solid var(--ls-blue-light);
   pointer-events: none;
   z-index: 10;
 }
@@ -121,50 +103,29 @@
   position: absolute;
   bottom: 10px; right: 10px;
   width: 22px; height: 22px;
-  border-bottom: 2px solid #06b6d4;
-  border-right: 2px solid #06b6d4;
+  border-bottom: 2px solid var(--ls-blue-light);
+  border-right: 2px solid var(--ls-blue-light);
   pointer-events: none;
   z-index: 10;
 }
 
-/* Horizontal center line (scanning effect) */
 @keyframes scan-line {
-  0%   { top: 20%; opacity: 0.7; }
-  50%  { top: 80%; opacity: 0.3; }
-  100% { top: 20%; opacity: 0.7; }
+  0%   { top: 20%; opacity: 0.6; }
+  50%  { top: 80%; opacity: 0.2; }
+  100% { top: 20%; opacity: 0.6; }
 }
 .reticle-scan {
   position: absolute;
-  left: 10px;
-  right: 10px;
+  left: 10px; right: 10px;
   height: 1px;
-  background: linear-gradient(90deg, transparent, #06b6d4, transparent);
+  background: linear-gradient(90deg, transparent, var(--ls-blue-mid), transparent);
   pointer-events: none;
   z-index: 10;
   animation: scan-line 3s ease-in-out infinite;
 }
 
-/* ── Modal high-tech overlay ──────────────────────────────────────────── */
-.cyber-modal-overlay {
-  backdrop-filter: blur(6px) saturate(0.7);
-  -webkit-backdrop-filter: blur(6px) saturate(0.7);
-  background: rgba(5, 5, 5, 0.82);
-}
-
-.cyber-modal-panel {
-  background: #0a0f1a;
-  border: 1px solid #0e7490;
-  box-shadow: 0 0 30px rgba(6, 182, 212, 0.15), 0 0 60px rgba(6, 182, 212, 0.07);
-}
-
-/* Header divider glow */
-.cyber-divider {
-  border-color: #0e7490;
-  box-shadow: 0 1px 0 rgba(6, 182, 212, 0.20);
-}
-
-/* ── Scrollbar ────────────────────────────────────────────────────────── */
+/* Scrollbar */
 ::-webkit-scrollbar { width: 6px; height: 6px; }
-::-webkit-scrollbar-track { background: #050505; }
-::-webkit-scrollbar-thumb { background: #0e7490; border-radius: 3px; }
-::-webkit-scrollbar-thumb:hover { background: #06b6d4; }
+::-webkit-scrollbar-track { background: var(--ls-bg-page); }
+::-webkit-scrollbar-thumb { background: var(--ls-blue-light); border-radius: 3px; }
+::-webkit-scrollbar-thumb:hover { background: var(--ls-blue-mid); }

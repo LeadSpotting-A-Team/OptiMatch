@@ -1,7 +1,7 @@
 from __future__ import annotations
 
 import csv
-from io import IO
+from typing import IO
 from src.core.entities.post_metadata import PostMetadata
 
 

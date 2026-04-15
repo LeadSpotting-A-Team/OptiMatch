@@ -12,7 +12,6 @@ export default function QueryFaceUpload({ onSearchFile, onSearchUrl, onFileChang
     if (!file) return
     setPendingFile(file)
     setPendingPreview(URL.createObjectURL(file))
-    // Notify App so it clears the file-mode search result; the blob URL becomes the active preview
     onFileChange?.()
   }, [onFileChange])
 
@@ -33,7 +32,6 @@ export default function QueryFaceUpload({ onSearchFile, onSearchUrl, onFileChang
 
   const canSearch = mode === 'file' ? !!pendingFile : urlInput.trim().length > 0
 
-  // Each mode maintains a fully independent preview — no state bleeds across tabs
   const filePreview = pendingPreview
     || (fileQueryFace ? `data:image/jpeg;base64,${fileQueryFace}` : null)
 
@@ -44,29 +42,26 @@ export default function QueryFaceUpload({ onSearchFile, onSearchUrl, onFileChang
 
   return (
     <div className="space-y-4">
-      {/* Panel wrapper */}
-      <div className="rounded-xl border border-cyan-900/50 overflow-hidden"
-        style={{ background: 'linear-gradient(160deg, #060d14 0%, #050505 100%)' }}>
-
+      <div className="ls-card rounded-xl overflow-hidden">
         {/* Mode tabs */}
-        <div className="flex border-b border-cyan-900/40">
+        <div className="flex border-b ls-border">
           <button
             onClick={() => setMode('file')}
-            className={`flex-1 py-3 text-xs font-mono font-bold tracking-widest uppercase transition-all
+            className={`flex-1 py-3 text-xs font-semibold tracking-wide uppercase transition-all
               ${mode === 'file'
-                ? 'bg-cyan-500/10 text-cyan-400 border-b-2 border-cyan-500'
-                : 'text-slate-600 hover:text-slate-400'}`}
+                ? 'bg-blue-50 text-blue-600 border-b-2 border-blue-600'
+                : 'text-gray-400 hover:text-gray-600 hover:bg-gray-50'}`}
           >
-            ▲ Upload File
+            Upload Image
           </button>
           <button
             onClick={() => setMode('url')}
-            className={`flex-1 py-3 text-xs font-mono font-bold tracking-widest uppercase transition-all
+            className={`flex-1 py-3 text-xs font-semibold tracking-wide uppercase transition-all
               ${mode === 'url'
-                ? 'bg-cyan-500/10 text-cyan-400 border-b-2 border-cyan-500'
-                : 'text-slate-600 hover:text-slate-400'}`}
+                ? 'bg-blue-50 text-blue-600 border-b-2 border-blue-600'
+                : 'text-gray-400 hover:text-gray-600 hover:bg-gray-50'}`}
           >
-            ◈ From URL
+            From URL
           </button>
         </div>
 
@@ -76,38 +71,40 @@ export default function QueryFaceUpload({ onSearchFile, onSearchUrl, onFileChang
             <div
               {...getRootProps()}
               className={`
-                relative flex flex-col items-center justify-center rounded-lg border cursor-pointer
-                transition-all min-h-[260px] p-6
+                relative flex flex-col items-center justify-center rounded-lg border-2 border-dashed
+                cursor-pointer transition-all min-h-[240px] p-6
                 ${isDragActive
-                  ? 'border-cyan-500 bg-cyan-500/5'
-                  : 'border-cyan-900/50 hover:border-cyan-700/60 hover:bg-cyan-950/20'}
+                  ? 'border-blue-500 bg-blue-50'
+                  : 'border-blue-200 hover:border-blue-400 hover:bg-blue-50/50'}
                 ${loading ? 'pointer-events-none opacity-60' : ''}
               `}
             >
               <input {...getInputProps()} />
 
-              {/* Camera reticle corners */}
-              <div className="reticle-all" />
-              <span className="reticle-bottom-left" />
-              <span className="reticle-bottom-right" />
+              {/* Corner brackets */}
+              <div className="reticle-all opacity-40" />
+              <span className="reticle-bottom-left opacity-40" />
+              <span className="reticle-bottom-right opacity-40" />
               {isDragActive && <div className="reticle-scan" />}
 
               {displayPreview ? (
                 <img
                   src={displayPreview}
                   alt="Query face"
-                  className="max-h-56 max-w-full rounded object-contain z-10 relative"
+                  className="max-h-52 max-w-full rounded object-contain z-10 relative"
                 />
               ) : (
-                <div className="text-center space-y-4 z-10 relative">
-                  <div className="w-16 h-16 mx-auto border-2 border-cyan-900/60 rounded-full flex items-center justify-center">
-                    <span className="text-2xl text-cyan-900">◉</span>
+                <div className="text-center space-y-3 z-10 relative">
+                  <div className="w-14 h-14 mx-auto rounded-full bg-blue-50 border-2 border-blue-200 flex items-center justify-center">
+                    <svg className="w-6 h-6 text-blue-300" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M4 16l4-4 4 4 4-6 4 6M4 20h16M12 4v8"/>
+                    </svg>
                   </div>
                   <div>
-                    <p className="text-cyan-800 text-xs font-mono tracking-widest uppercase mb-1">
-                      {isDragActive ? 'Release to acquire target' : 'Drag & drop or click to select'}
+                    <p className="text-gray-500 text-sm font-medium mb-1">
+                      {isDragActive ? 'Drop image here' : 'Drag & drop or click to upload'}
                     </p>
-                    <p className="text-slate-800 text-[10px] font-mono">JPG · PNG · WEBP</p>
+                    <p className="text-gray-400 text-xs">JPG · PNG · WEBP</p>
                   </div>
                 </div>
               )}
@@ -115,35 +112,37 @@ export default function QueryFaceUpload({ onSearchFile, onSearchUrl, onFileChang
 
           ) : (
             <div className="space-y-3">
-              <div className="relative rounded-lg border border-cyan-900/50 overflow-hidden min-h-[260px] flex flex-col">
-                {/* Reticle corners on URL preview */}
-                <div className="reticle-all pointer-events-none" />
-                <span className="reticle-bottom-left pointer-events-none" />
-                <span className="reticle-bottom-right pointer-events-none" />
+              <div className="relative rounded-lg border-2 border-dashed border-blue-200 overflow-hidden min-h-[240px] flex flex-col">
+                <div className="reticle-all opacity-40 pointer-events-none" />
+                <span className="reticle-bottom-left opacity-40 pointer-events-none" />
+                <span className="reticle-bottom-right opacity-40 pointer-events-none" />
 
                 {displayPreview ? (
                   <div className="flex-1 flex items-center justify-center p-4">
                     <img
                       src={displayPreview}
                       alt="Query face preview"
-                      className="max-h-52 max-w-full rounded object-contain z-10"
+                      className="max-h-48 max-w-full rounded object-contain z-10"
                       onError={(e) => {
                         e.target.style.display = 'none'
                         e.target.nextSibling.style.display = 'flex'
                       }}
                     />
-                    <div className="flex-1 items-center justify-center text-slate-700 p-8 text-center hidden">
-                      <div className="space-y-2 font-mono">
+                    <div className="flex-1 items-center justify-center text-gray-300 p-8 text-center hidden">
+                      <div className="space-y-2">
                         <div className="text-2xl">✕</div>
-                        <p className="text-xs tracking-wide">Cannot preview URL directly<br/>Click Search to try anyway</p>
+                        <p className="text-xs text-gray-400">Cannot preview URL directly<br/>Click Search to try anyway</p>
                       </div>
                     </div>
                   </div>
                 ) : (
-                  <div className="flex-1 flex items-center justify-center text-slate-700 p-8 text-center">
-                    <div className="space-y-3 font-mono">
-                      <div className="text-3xl text-cyan-900/50">◈</div>
-                      <p className="text-xs tracking-widest uppercase text-cyan-900">Paste target URL below</p>
+                  <div className="flex-1 flex items-center justify-center text-gray-300 p-8 text-center">
+                    <div className="space-y-3">
+                      <svg className="w-8 h-8 text-blue-200 mx-auto" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M13.828 10.172a4 4 0 00-5.656 0l-4 4a4 4 0 105.656 5.656l1.102-1.101"/>
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M10.172 13.828a4 4 0 005.656 0l4-4a4 4 0 00-5.656-5.656l-1.1 1.1"/>
+                      </svg>
+                      <p className="text-xs text-gray-400">Paste an image URL below</p>
                     </div>
                   </div>
                 )}
@@ -156,9 +155,9 @@ export default function QueryFaceUpload({ onSearchFile, onSearchUrl, onFileChang
                 onKeyDown={(e) => e.key === 'Enter' && canSearch && !loading && handleSearch()}
                 placeholder="https://example.com/photo.jpg"
                 disabled={loading}
-                className="w-full rounded-lg border border-cyan-900/50 bg-slate-950 px-4 py-3 text-sm
-                  text-slate-300 placeholder-slate-700 font-mono
-                  focus:outline-none focus:border-cyan-700 disabled:opacity-50"
+                className="w-full rounded-lg border border-blue-200 bg-white px-4 py-3 text-sm
+                  text-gray-700 placeholder-gray-400
+                  focus:outline-none focus:border-blue-500 focus:ring-1 focus:ring-blue-200 disabled:opacity-50"
               />
             </div>
           )}
@@ -169,34 +168,28 @@ export default function QueryFaceUpload({ onSearchFile, onSearchUrl, onFileChang
           <button
             onClick={handleSearch}
             disabled={!canSearch || loading || !backendReady}
-            className="w-full py-3 rounded-lg font-mono font-bold text-sm tracking-widest uppercase transition-all
-              disabled:opacity-30 disabled:cursor-not-allowed
-              flex items-center justify-center gap-3"
-            style={{
-              background: (!canSearch || loading || !backendReady)
-                ? undefined
-                : 'linear-gradient(90deg, #0891b2, #06b6d4)',
-              backgroundColor: (!canSearch || loading || !backendReady) ? '#0a1520' : undefined,
-              color: (!canSearch || loading || !backendReady) ? '#164e63' : '#050505',
-              border: '1px solid',
-              borderColor: (!canSearch || loading || !backendReady) ? '#0e3a4a' : '#06b6d4',
-              boxShadow: (!canSearch || loading || !backendReady) ? 'none' : '0 0 12px rgba(6,182,212,0.3)',
-            }}
+            className="w-full py-3 rounded-lg font-semibold text-sm tracking-wide transition-all
+              disabled:opacity-40 disabled:cursor-not-allowed
+              flex items-center justify-center gap-2
+              bg-blue-600 hover:bg-blue-700 text-white
+              disabled:bg-gray-200 disabled:text-gray-400 shadow-sm"
           >
             {loading ? (
               <>
-                <span className="animate-spin inline-block w-4 h-4 border-2 border-current border-t-transparent rounded-full" />
-                Scanning...
+                <span className="animate-spin inline-block w-4 h-4 border-2 border-white border-t-transparent rounded-full" />
+                Searching...
               </>
             ) : !backendReady ? (
               <>
-                <span className="animate-spin inline-block w-4 h-4 border-2 border-current border-t-transparent rounded-full" />
+                <span className="animate-spin inline-block w-4 h-4 border-2 border-gray-400 border-t-transparent rounded-full" />
                 System Initializing...
               </>
             ) : (
               <>
-                <span>◉</span>
-                Acquire Target
+                <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M21 21l-4.35-4.35M17 11A6 6 0 1 1 5 11a6 6 0 0 1 12 0z"/>
+                </svg>
+                Search Faces
               </>
             )}
           </button>
@@ -204,7 +197,7 @@ export default function QueryFaceUpload({ onSearchFile, onSearchUrl, onFileChang
       </div>
 
       {error && (
-        <div className="rounded-lg border border-red-900/60 bg-red-950/30 px-4 py-3 text-red-500 text-xs font-mono tracking-wide">
+        <div className="rounded-lg border border-red-200 bg-red-50 px-4 py-3 text-red-600 text-sm">
           ✕ {error}
         </div>
       )}

@@ -9,6 +9,7 @@ export default defineConfig({
       '/search/url': 'http://localhost:8000',
       '/faces': 'http://localhost:8000',
       '/health': 'http://localhost:8000',
+      '/learn': 'http://localhost:8000',
     },
   },
 })

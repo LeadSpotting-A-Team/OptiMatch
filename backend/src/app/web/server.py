@@ -7,6 +7,7 @@ Start with:
 from __future__ import annotations
 
 import base64
+import io
 import logging
 import os
 import tempfile
@@ -27,6 +28,7 @@ from src.app.ml.arcface_embedding import ArcFaceEmbedding
 from src.app.ml.mtcnn_detector import MtcnnDetector
 from src.app.vector_store.faiss_vector_store import FaissVectorStore
 from src.core.services import embedding_service, harvesting_service
+from src.core.services.learn_and_search_services import learn_service
 
 logging.getLogger("tensorflow").setLevel(logging.ERROR)
 
@@ -163,6 +165,31 @@ async def search_by_url(url: str = Form(...)) -> dict:
         return _run_search_pipeline(tmp_path)
     finally:
         os.unlink(tmp_path)
+
+
+# Accepts a CSV file upload and runs the learn pipeline (ingest posts → embeddings → index).
+# Returns the number of posts learned and the new total face count.
+@app.post("/learn/csv")
+async def learn_from_csv(file: UploadFile = File(...)) -> dict:
+    if file.filename and not file.filename.lower().endswith(".csv"):
+        raise HTTPException(status_code=400, detail="File must be a CSV (.csv)")
+    try:
+        contents = await file.read()
+        csv_text = contents.decode("utf-8-sig")
+    except Exception as exc:
+        raise HTTPException(status_code=400, detail=f"Failed to read file: {exc}") from exc
+
+    csv_io = io.StringIO(csv_text)
+    try:
+        learned = learn_service(csv_io, _detector, _embedder, _vector_store, _metadata_repo)
+    except Exception as exc:
+        raise HTTPException(status_code=500, detail=f"Learning failed: {exc}") from exc
+
+    return {
+        "status": "ok",
+        "learned_posts": learned,
+        "total_faces": _vector_store.get_face_count(),
+    }
 
 
 # Accepts a multipart image upload, validates it, and runs the face search pipeline.
