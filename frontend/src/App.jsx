@@ -188,11 +188,7 @@ export default function App() {
       <header className="ls-header px-4 py-3 md:px-8 md:py-0 flex items-center gap-6">
         {/* Logo */}
         <div className="flex items-center gap-3 shrink-0 py-3">
-          <img src="/leadspotting-logo.png" alt="Leadspotting" className="h-10 w-auto" />
-          <div className="hidden sm:flex flex-col border-l border-blue-100 pl-3">
-            <span className="text-sm font-bold text-blue-800 leading-tight">LeadSpotting</span>
-            <span className="text-[11px] text-blue-400 tracking-wide">Face Search Engine</span>
-          </div>
+          <img src="/leadspotting-logo.gif" alt="Leadspotting" className="h-10 w-auto" />
         </div>
 
         {/* Nav buttons */}

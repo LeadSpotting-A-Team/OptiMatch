@@ -51,7 +51,6 @@ export default function CsvLearnUpload({ backendReady }) {
     <div className="ls-card rounded-xl overflow-hidden">
       {/* Panel header */}
       <div className="px-4 py-3 border-b ls-border flex items-center gap-2">
-        <div className="w-2 h-2 rounded-full bg-ls-green" />
         <h2 className="text-sm font-semibold text-gray-700 tracking-wide">Upload Dataset (CSV)</h2>
       </div>
 
@@ -109,7 +108,6 @@ export default function CsvLearnUpload({ backendReady }) {
             </>
           ) : (
             <>
-              <span>⬆</span>
               Upload &amp; Learn
             </>
           )}

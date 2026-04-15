@@ -227,7 +227,7 @@ export default function QueryFaceUpload({
             className="w-full py-3 rounded-lg font-semibold text-sm tracking-wide transition-all
               disabled:opacity-40 disabled:cursor-not-allowed
               flex items-center justify-center gap-2
-              bg-blue-600 hover:bg-blue-700 text-white
+              bg-ls-green hover:brightness-105 text-white
               disabled:bg-gray-200 disabled:text-gray-400 shadow-sm"
           >
             {loading ? (
