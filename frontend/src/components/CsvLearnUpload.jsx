@@ -115,14 +115,34 @@ export default function CsvLearnUpload({ backendReady }) {
 
         {/* Success */}
         {result && (
-          <div className="rounded-lg border border-green-200 bg-green-50 px-4 py-3 text-sm text-green-700 space-y-0.5">
-            <p className="font-semibold">✓ Dataset learned successfully</p>
-            <p className="text-xs text-green-600">
-              {result.learned_posts} post{result.learned_posts !== 1 ? 's' : ''} processed
-              &nbsp;·&nbsp;
-              {result.total_faces} total faces in index
-            </p>
-          </div>
+          result.new_faces_added > 0 ? (
+            <div className="rounded-lg border border-green-200 bg-green-50 px-4 py-3 text-sm text-green-700 space-y-0.5">
+              <p className="font-semibold">Learning complete</p>
+              <p className="text-xs text-green-600">
+                {result.new_faces_added} new face{result.new_faces_added !== 1 ? 's' : ''} added
+                &nbsp;·&nbsp;
+                {result.learned_posts} post{result.learned_posts !== 1 ? 's' : ''} processed
+                &nbsp;·&nbsp;
+                {result.total_faces} total in index
+              </p>
+            </div>
+          ) : result.learned_posts > 0 ? (
+            <div className="rounded-lg border border-amber-200 bg-amber-50 px-4 py-3 text-sm text-amber-700 space-y-0.5">
+              <p className="font-semibold">Nothing new added</p>
+              <p className="text-xs text-amber-600">
+                All faces already exist in the index
+                &nbsp;·&nbsp;
+                {result.total_faces} total in index
+              </p>
+            </div>
+          ) : (
+            <div className="rounded-lg border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-700 space-y-0.5">
+              <p className="font-semibold">No valid posts processed</p>
+              <p className="text-xs text-red-600">
+                Check that the CSV contains valid media URLs
+              </p>
+            </div>
+          )
         )}
 
         {/* Error */}

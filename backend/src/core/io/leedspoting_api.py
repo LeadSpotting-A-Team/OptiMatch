@@ -22,7 +22,6 @@ class SocialProfile:
 
 def get_profiles_count_from_api(first_name: str, last_name: str) -> int:
 
-    return 1 # for debugging purposes
     #we gets the number of results from the api on that spacific fullname
     url = f"https://api.leadspotting.com/Customers.jsp?Command=DiscoverNewProfile&Name={first_name}%20{last_name}"
     response = requests.get(url)

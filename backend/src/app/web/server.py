@@ -182,13 +182,14 @@ async def learn_from_csv(file: UploadFile = File(...)) -> dict:
 
     csv_io = io.StringIO(csv_text)
     try:
-        learned = learn_service(csv_io, _detector, _embedder, _vector_store, _metadata_repo)
+        learned_posts, new_faces_added = learn_service(csv_io, _detector, _embedder, _vector_store, _metadata_repo)
     except Exception as exc:
         raise HTTPException(status_code=500, detail=f"Learning failed: {exc}") from exc
 
     return {
         "status": "ok",
-        "learned_posts": learned,
+        "learned_posts": learned_posts,
+        "new_faces_added": new_faces_added,
         "total_faces": _vector_store.get_face_count(),
     }
 
