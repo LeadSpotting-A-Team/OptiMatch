@@ -18,11 +18,6 @@ def search_api(
     embedding_model: IEmbeddingModel,
     similarity_threshold: float = FACE_CONFIDENCE_THRESHOLD,
 ) -> list[tuple[SocialProfile, float]]:
-    debug_file = "debug.txt"
-    with open(debug_file, "a") as f:
-        f.write(f"------------------------------------------------------------------------- \n")
-        f.write(f"target_first_name: {target_first_name}\n")
-        f.write(f"target_last_name: {target_last_name}\n")
         
 
 

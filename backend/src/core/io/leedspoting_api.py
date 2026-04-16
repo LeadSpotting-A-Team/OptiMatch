@@ -26,7 +26,7 @@ def get_profiles_count_from_api(first_name: str, last_name: str) -> int:
     url = f"https://api.leadspotting.com/Customers.jsp?Command=DiscoverNewProfile&Name={first_name}%20{last_name}"
     response = requests.get(url)
     if response.status_code != 200:
-        raise Exception(f"Failed to get profiles count from API: {response.status_code}")
+        return len(get_profiles_from_api(first_name, last_name))
     return response.json()["numberOfResults"]
 
 
@@ -34,11 +34,12 @@ def get_profiles_from_api(first_name: str, last_name: str) -> list[SocialProfile
     #we gets the number of results from the api on that spacific fullname
     url = f"https://api.leadspotting.com/Customers.jsp?Command=SocialProfileSearch&Name={first_name}%20{last_name}"
     response = requests.get(url)
-    
+    if response.status_code != 200:
+        return []
     profiles = []
     for profile in response.json()["profiles"]:
         name = profile.get("name","invalid_name")
-        platform = profile.get("platform","unknowen platform")
+        platform = profile.get("platform","unknown platform")
         link = profile.get("link","invalid_link")
         bio = profile.get("bio","invalid_bio")
         picture_link = profile.get("picture_link","invalid_picture_link")
