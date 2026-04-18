@@ -1,30 +1,45 @@
-#ignore all files in sandbox folder but keep the gitkeep file (to make the folder visible to git)
-sandbox/*
-!sandbox/.gitkeep
-#ignore venv folder (virtual environment)
-.venv/ 
-#ignore mtcnn folder (MTCNN library)
-mtcnn/
-#ignore vscode files
+### --- Environment & Editor --- ###
+# Python Virtual Environment
+.venv/
+# VS Code Settings
 .vscode/
-#ignore all pycache files in the project
-**/__pycache__/ 
-# Ignore runtime data but keep directory structure via .gitkeep
-backend/data/db/*
-!backend/data/db/.gitkeep
-backend/data/index/*
-!backend/data/index/.gitkeep
-backend/data/faces/*
-!backend/data/faces/.gitkeep
-backend/data/downloads/*
-!backend/data/downloads/.gitkeep
+# Python Cache
+**/__pycache__/
 
-#ignore ML model weights
+### --- Dependencies --- ###
+# Node.js dependencies
+node_modules/
+# ML Library (MTCNN)
+mtcnn/
+
+### --- Machine Learning Models --- ###
+# Ignore model weights but keep directory
+# downloaded from:
+# https://huggingface.co/facefusion/models-3.0.0/blob/main/arcface_w600k_r50.onnx
 backend/src/app/ml/models/*
 !backend/src/app/ml/models/.gitkeep
 
-#ignore sandbox index files
-sandbox/face_vector_store.index
-#ignore all files in node_modules folder
-node_modules/
+### --- Runtime Data & Databases --- ###
+# Database files
+backend/data/db/*
+!backend/data/db/.gitkeep
 
+# Vector indexes
+backend/data/index/*
+!backend/data/index/.gitkeep
+
+# Face images data
+backend/data/faces/*
+!backend/data/faces/.gitkeep
+
+# Downloads folder
+backend/data/downloads/*
+!backend/data/downloads/.gitkeep
+
+### --- Sandbox & Testing --- ###
+# Ignore everything in sandbox except .gitkeep
+sandbox/*
+!sandbox/.gitkeep
+
+# Specific sandbox index files
+sandbox/face_vector_store.index
