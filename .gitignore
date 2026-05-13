@@ -1,5 +1,45 @@
+### --- Environment & Editor --- ###
+# Python Virtual Environment
+.venv/
+# VS Code Settings
+.vscode/
+# Python Cache
+**/__pycache__/
+
+### --- Dependencies --- ###
+# Node.js dependencies
+node_modules/
+# ML Library (MTCNN)
+mtcnn/
+
+### --- Machine Learning Models --- ###
+# Ignore model weights but keep directory
+# downloaded from:
+# https://huggingface.co/facefusion/models-3.0.0/blob/main/arcface_w600k_r50.onnx
+backend/src/app/ml/models/*
+!backend/src/app/ml/models/.gitkeep
+
+### --- Runtime Data & Databases --- ###
+# Database files
+backend/data/db/*
+!backend/data/db/.gitkeep
+
+# Vector indexes
+backend/data/index/*
+!backend/data/index/.gitkeep
+
+# Face images data
+backend/data/faces/*
+!backend/data/faces/.gitkeep
+
+# Downloads folder
+backend/data/downloads/*
+!backend/data/downloads/.gitkeep
+
+### --- Sandbox & Testing --- ###
+# Ignore everything in sandbox except .gitkeep
 sandbox/*
 !sandbox/.gitkeep
-.venv/*
-mtcnn/*
-.vscode/*
+
+# Specific sandbox index files
+sandbox/face_vector_store.index

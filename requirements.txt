@@ -1,0 +1,19 @@
+# ── ML / Computer Vision ──────────────────────────────────────────────────────
+numpy>=1.26
+opencv-python>=4.8
+faiss-cpu>=1.7          # vector store for face embeddings (CPU build)
+onnxruntime>=1.16       # ArcFace embedding model inference (ONNX runtime)
+
+# Face detectors — the system supports all three via IFaceDetector;
+# MTCNN is the active default, DeepFace and RetinaFace are ready-to-use alternatives.
+mtcnn>=1.0              # default detector; pulls in TensorFlow / Keras automatically
+deepface>=0.0.90        # alternative detector backend (from_deepface_result factory)
+retina-face>=0.0.13     # alternative detector backend (high-accuracy, RetinaFace model)
+
+# ── Networking ────────────────────────────────────────────────────────────────
+requests>=2.28
+
+# ── Web / API ─────────────────────────────────────────────────────────────────
+fastapi>=0.104.0
+uvicorn[standard]>=0.24.0
+python-multipart>=0.0.6  # required by FastAPI for UploadFile / Form parsing
