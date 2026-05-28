@@ -2,6 +2,10 @@
 :: OptiMatch - Setup Launcher
 :: Double-click this file to run the full setup and build run.exe
 
+:: Change to the directory that contains this .bat file so all relative
+:: paths in the PowerShell script resolve correctly on any machine.
+cd /d "%~dp0"
+
 powershell.exe -NoProfile -ExecutionPolicy Bypass -File "%~dp0setup.ps1"
 if %ERRORLEVEL% NEQ 0 (
     echo.

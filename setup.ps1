@@ -6,21 +6,36 @@
 
 $ErrorActionPreference = "Stop"
 
-$PROJECT_ROOT  = Split-Path -Parent $MyInvocation.MyCommand.Path
+# $PSScriptRoot is always set to the directory that contains this .ps1 file,
+# regardless of the caller's working directory — so every path below is
+# portable and will work on any machine.
+$PROJECT_ROOT  = $PSScriptRoot
 $VENV_DIR      = Join-Path $PROJECT_ROOT ".venv"
 $BACKEND_DIR   = Join-Path $PROJECT_ROOT "backend"
 $FRONTEND_DIR  = Join-Path $PROJECT_ROOT "frontend"
-$MODELS_DIR    = Join-Path $BACKEND_DIR "src\app\ml\models"
-$MODEL_PATH    = Join-Path $MODELS_DIR "arcface_w600k_r50.onnx"
+$MODELS_DIR    = Join-Path $BACKEND_DIR  "src\app\ml\models"
+$MODEL_PATH    = Join-Path $MODELS_DIR   "arcface_w600k_r50.onnx"
 $MODEL_URL     = "https://huggingface.co/facefusion/models-3.0.0/resolve/main/arcface_w600k_r50.onnx"
 $REQUIREMENTS  = Join-Path $PROJECT_ROOT "requirements.txt"
 
 # ── Helpers ──────────────────────────────────────────────────────────────────
 
-function Write-Step { param([string]$msg)  Write-Host "`n==> $msg" -ForegroundColor Cyan }
-function Write-Ok   { param([string]$msg)  Write-Host "    [OK] $msg" -ForegroundColor Green }
-function Write-Warn { param([string]$msg)  Write-Host "    [WARN] $msg" -ForegroundColor Yellow }
-function Write-Fail { param([string]$msg)  Write-Host "`n[ERROR] $msg" -ForegroundColor Red; exit 1 }
+function Write-Step { param([string]$msg) Write-Host "`n==> $msg" -ForegroundColor Cyan }
+function Write-Ok   { param([string]$msg) Write-Host "    [OK] $msg"   -ForegroundColor Green }
+function Write-Warn { param([string]$msg) Write-Host "    [WARN] $msg" -ForegroundColor Yellow }
+function Write-Fail { param([string]$msg) Write-Host "`n[ERROR] $msg"  -ForegroundColor Red; exit 1 }
+
+# ── Sanity check: verify we can find the project layout ──────────────────────
+
+if (-not (Test-Path (Join-Path $PROJECT_ROOT "run.py"))) {
+    Write-Fail "run.py not found in '$PROJECT_ROOT'. Make sure setup.ps1 lives in the project root."
+}
+if (-not (Test-Path $REQUIREMENTS)) {
+    Write-Fail "requirements.txt not found in '$PROJECT_ROOT'."
+}
+if (-not (Test-Path $FRONTEND_DIR)) {
+    Write-Fail "frontend/ folder not found in '$PROJECT_ROOT'."
+}
 
 # ── Step 1: Check Python ──────────────────────────────────────────────────────
 
@@ -56,6 +71,7 @@ try {
 Write-Step "Setting up Python virtual environment..."
 if (-not (Test-Path $VENV_DIR)) {
     & python -m venv $VENV_DIR
+    if ($LASTEXITCODE -ne 0) { Write-Fail "Failed to create virtual environment (exit $LASTEXITCODE)." }
     Write-Ok "Created .venv"
 } else {
     Write-Ok ".venv already exists — skipping creation"
@@ -64,17 +80,28 @@ if (-not (Test-Path $VENV_DIR)) {
 $PIP    = Join-Path $VENV_DIR "Scripts\pip.exe"
 $PYTHON = Join-Path $VENV_DIR "Scripts\python.exe"
 
+if (-not (Test-Path $PYTHON)) {
+    Write-Fail "Virtual environment appears broken — '$PYTHON' not found.`nDelete the .venv folder and re-run setup."
+}
+if (-not (Test-Path $PIP)) {
+    Write-Fail "Virtual environment appears broken — '$PIP' not found.`nDelete the .venv folder and re-run setup."
+}
+
 # ── Step 4: Install Python dependencies ──────────────────────────────────────
 
 Write-Step "Installing Python dependencies from requirements.txt..."
 & $PIP install --upgrade pip --quiet
+if ($LASTEXITCODE -ne 0) { Write-Fail "Failed to upgrade pip (exit $LASTEXITCODE)." }
+
 & $PIP install -r $REQUIREMENTS
+if ($LASTEXITCODE -ne 0) { Write-Fail "Failed to install Python dependencies (exit $LASTEXITCODE)." }
 Write-Ok "Python packages installed"
 
 # ── Step 5: Install PyInstaller ───────────────────────────────────────────────
 
 Write-Step "Installing PyInstaller..."
 & $PIP install pyinstaller --quiet
+if ($LASTEXITCODE -ne 0) { Write-Fail "Failed to install PyInstaller (exit $LASTEXITCODE)." }
 Write-Ok "PyInstaller ready"
 
 # ── Step 6: Download ArcFace model ───────────────────────────────────────────
@@ -90,7 +117,9 @@ if (Test-Path $MODEL_PATH) {
         $ProgressPreference = "Continue"
         Write-Ok "Model downloaded to $MODEL_PATH"
     } catch {
-        Write-Fail "Failed to download ArcFace model: $_`nManual download: $MODEL_URL"
+        # Remove any partial download so the next run will retry cleanly.
+        if (Test-Path $MODEL_PATH) { Remove-Item $MODEL_PATH -Force }
+        Write-Fail "Failed to download ArcFace model: $_`nManual download URL: $MODEL_URL"
     }
 }
 
@@ -99,16 +128,24 @@ if (Test-Path $MODEL_PATH) {
 Write-Step "Installing frontend npm dependencies..."
 Push-Location $FRONTEND_DIR
 & npm install
+$npmExit = $LASTEXITCODE   # capture BEFORE Pop-Location changes $LASTEXITCODE
 Pop-Location
+if ($npmExit -ne 0) { Write-Fail "npm install failed in frontend/ (exit $npmExit)." }
 Write-Ok "Frontend packages installed"
 
 # ── Step 8: Build run.exe ─────────────────────────────────────────────────────
 
 Write-Step "Building run.exe with PyInstaller..."
 $PYINSTALLER = Join-Path $VENV_DIR "Scripts\pyinstaller.exe"
+if (-not (Test-Path $PYINSTALLER)) {
+    Write-Fail "pyinstaller.exe not found at '$PYINSTALLER'. Step 5 may have failed."
+}
+
 Push-Location $PROJECT_ROOT
 & $PYINSTALLER --onefile --console --name "run" run.py
+$pyiExit = $LASTEXITCODE   # capture BEFORE Pop-Location
 Pop-Location
+if ($pyiExit -ne 0) { Write-Fail "PyInstaller build failed (exit $pyiExit)." }
 Write-Ok "Build complete"
 
 # ── Step 9: Copy EXE to project root ─────────────────────────────────────────
@@ -116,6 +153,10 @@ Write-Ok "Build complete"
 Write-Step "Deploying run.exe to project root..."
 $SRC = Join-Path $PROJECT_ROOT "dist\run.exe"
 $DST = Join-Path $PROJECT_ROOT "run.exe"
+
+if (-not (Test-Path $SRC)) {
+    Write-Fail "Build artifact not found at '$SRC' — PyInstaller may have failed silently."
+}
 
 if (Test-Path $DST) {
     try {
