@@ -31,7 +31,7 @@ def get_profiles_count_from_api(first_name: str, last_name: str) -> int:
 
 
 def get_profiles_from_api(first_name: str, last_name: str) -> list[SocialProfile]:
-    #we gets the number of results from the api on that spacific fullname
+    #we gets the profiles from the api on that spacific fullname
     url = f"https://api.leadspotting.com/Customers.jsp?Command=SocialProfileSearch&Name={first_name}%20{last_name}"
     response = requests.get(url)
     if response.status_code != 200:

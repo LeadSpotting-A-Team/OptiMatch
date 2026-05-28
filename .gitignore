@@ -36,6 +36,12 @@ backend/data/faces/*
 backend/data/downloads/*
 !backend/data/downloads/.gitkeep
 
+### --- PyInstaller --- ###
+build/
+dist/
+run.spec
+run.exe
+
 ### --- Sandbox & Testing --- ###
 # Ignore everything in sandbox except .gitkeep
 sandbox/*

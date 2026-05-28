@@ -1,0 +1,23 @@
+{
+  "backend": {
+    "host": "0.0.0.0",
+    "port": 8000,
+    "reload": true
+  },
+  "frontend": {
+    "port": 5173
+  },
+  "face_detection": {
+    "confidence_threshold": 0.5,
+    "min_face_size": 64
+  },
+  "embedding": {
+    "model": "ArcFace"
+  },
+  "faiss": {
+    "ivf_nlist": 100
+  },
+  "paths": {
+    "data_dir": "backend/data"
+  }
+}
