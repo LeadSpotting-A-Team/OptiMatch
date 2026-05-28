@@ -9,6 +9,8 @@ from src.app.config import FACE_CONFIDENCE_THRESHOLD
 from src.core.services.face_detection_service import IFaceDetector
 from src.core.services.embedding_service import IEmbeddingModel
 from src.app.config import DOWNLOAD_DIR
+from concurrent.futures import ThreadPoolExecutor, as_completed
+
 
 def search_api(
     target_first_name: str,
@@ -18,33 +20,38 @@ def search_api(
     embedding_model: IEmbeddingModel,
     similarity_threshold: float = FACE_CONFIDENCE_THRESHOLD,
 ) -> list[tuple[SocialProfile, float]]:
-        
-
-
 
     if get_profiles_count_from_api(target_first_name, target_last_name) == 0:
         return []
 
     profiles = get_profiles_from_api(target_first_name, target_last_name)
 
-    # List of (embedding, profile) pairs instead of a dict keyed by numpy array
-    # (numpy arrays are not hashable and cannot be used as dict keys).
     embedding_profile_pairs: list[tuple[np.ndarray, SocialProfile]] = []
 
-    for profile in profiles:
-        media_links = profile.get_all_images_links()
-        for media_link in media_links:
+    def _download_and_load(profile: SocialProfile):
+        file_path = download_to_temp_file(profile.get_all_images_links()[0], DOWNLOAD_DIR)
+        frames = load_image_or_video(file_path)
+        return profile, frames
+
+    # Download and load images in parallel using threads
+    with ThreadPoolExecutor(max_workers=10) as executor:
+        futures = [executor.submit(_download_and_load, p) for p in profiles]
+        loaded: list[tuple[SocialProfile, np.ndarray]] = []
+        for future in as_completed(futures):
             try:
-                file = download_to_temp_file(media_link, DOWNLOAD_DIR)
-                frames = load_image_or_video(file)
-                cropped_faces = harvest_faces_from_frames(frames, detector)
-                if len(cropped_faces) == 0:
-                    continue
-                for cf in cropped_faces:
-                    embedding = embedding_model.compute_embedding(embedding_model.preprocess(cf))
-                    embedding_profile_pairs.append((embedding, profile))
-            except Exception as e:
-                pass # Ignore errors
+                loaded.append(future.result())
+            except Exception:
+                pass
+
+    # Process sequentially: face detection and embedding computation
+    for profile, frames in loaded:
+        try:
+            cropped_faces = harvest_faces_from_frames(frames, detector)
+            for cf in cropped_faces:
+                emb = embedding_model.compute_embedding(embedding_model.preprocess(cf))
+                embedding_profile_pairs.append((emb, profile))
+        except Exception:
+            pass
 
     # Compute embeddings for the target query image.
     target_embeddings = []
