@@ -8,6 +8,7 @@ from __future__ import annotations
 
 import base64
 import io
+import json
 import logging
 import os
 import tempfile
@@ -36,6 +37,32 @@ logging.getLogger("tensorflow").setLevel(logging.ERROR)
 # ── Application setup ─────────────────────────────────────────────────────────
 
 app = FastAPI(title="OptiMatch API")
+
+
+@app.post("/compare/candidates")
+async def compare_candidate_pictures(file: UploadFile = File(...), candidates_json: str = Form(...)) -> dict:
+    from src.core.services.candidate_comparison import compare_candidates
+    try:
+        candidates = json.loads(candidates_json)
+        if not isinstance(candidates, list) or len(candidates) > 300:
+            raise ValueError("Expected at most 300 candidates")
+        for candidate in candidates:
+            if (not isinstance(candidate, dict) or not isinstance(candidate.get("link"), str)
+                    or not isinstance(candidate.get("picture_urls", []), list)
+                    or any(not isinstance(url, str) for url in candidate.get("picture_urls", []))):
+                raise ValueError("Each candidate requires a link and picture URL list")
+    except (ValueError, TypeError) as exc:
+        raise HTTPException(status_code=422, detail=str(exc)) from exc
+    if not file.content_type or not file.content_type.startswith("image/"):
+        raise HTTPException(status_code=400, detail="File must be an image")
+    contents = await file.read()
+    if len(contents) > 20 * 1024 * 1024:
+        raise HTTPException(status_code=413, detail="Image exceeds 20 MB")
+    image = cv2.imdecode(np.frombuffer(contents, dtype=np.uint8), cv2.IMREAD_COLOR)
+    if image is None:
+        raise HTTPException(status_code=400, detail="Invalid image")
+    return compare_candidates(cv2.cvtColor(image, cv2.COLOR_BGR2RGB), candidates,
+                              _detector, _embedder, config.FACE_CONFIDENCE_THRESHOLD, config.MIN_FACE_SIZE)
 
 app.add_middleware(
     CORSMiddleware,
